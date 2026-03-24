@@ -1,0 +1,8 @@
+@Api_HostAddress = http://localhost:5000
+
+POST {{Api_HostAddress}}/persons
+Content-Type: application/json
+
+{
+  "name": "John Doe"
+}
