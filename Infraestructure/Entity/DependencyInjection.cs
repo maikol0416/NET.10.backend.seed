@@ -10,7 +10,6 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddDependencyInjectionInfrastructureEf(this IServiceCollection services, IConfiguration configuration)
     {
-        var test = configuration["Sqlserver:ConnectionString"];
         services.AddDbContext<EntityDbContext>(options =>
             options.UseSqlServer(configuration["Sqlserver:ConnectionString"]));
             
