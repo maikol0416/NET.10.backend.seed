@@ -1,4 +1,4 @@
-namespace Domain;
+namespace Domain.DomainShared;
 
 public abstract class Entity
 {

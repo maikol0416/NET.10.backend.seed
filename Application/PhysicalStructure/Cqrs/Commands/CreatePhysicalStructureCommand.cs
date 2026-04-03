@@ -1,3 +1,4 @@
+using Application.Dto;
 using Domain.BoundedContext.Properties;
 using Domain.Ports;
 using MediatR;
@@ -20,9 +21,9 @@ public class CreatePhysicalStructureCommandHandler
         CreatePhysicalStructureCommand request, 
         CancellationToken cancellationToken)
     {
-        var location = new LocationValueObject (request.PhysicalStructureDto.Street, request.PhysicalStructureDto.Number);
-        var structure = new PhysicalStructureAgg(request.PhysicalStructureDto.Name, location);
-        await _repository.CreateAsync(structure);
-        return structure.Id;
+        // var location = new LocationValueObject (request.PhysicalStructureDto.Street, request.PhysicalStructureDto.Number);
+        // var structure = new PhysicalStructureAgg(request.PhysicalStructureDto.Name, location);
+        // await _repository.CreateAsync(structure);
+        return Guid.NewGuid();
     }
 }

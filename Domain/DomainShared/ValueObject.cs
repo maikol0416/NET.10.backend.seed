@@ -1,4 +1,4 @@
-namespace Domain;
+namespace Domain.DomainShared;
 
 public record ValueObject
 {

@@ -1,4 +1,4 @@
-namespace Application.PhysicalStructure;
+namespace Application.Dto;
 
 public class PhysicalStructureDto
 {
