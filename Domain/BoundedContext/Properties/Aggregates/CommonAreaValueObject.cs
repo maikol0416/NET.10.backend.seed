@@ -6,10 +6,10 @@ public record CommonAreaValueObject: ValueObject
 {
     public CommonAreaValueObject(string name,string description)
     {
-        if(string.IsNullOrEmpty(Name))
+        if(string.IsNullOrEmpty(name))
             throw new DomainException("Number cannot be null");
         
-        if(string.IsNullOrEmpty(Description))
+        if(string.IsNullOrEmpty(description))
             throw new DomainException("Detail cannot be null");
         
         Name = name;

@@ -13,10 +13,6 @@ public abstract partial class ApplicationService<ENT, DTO> : IApplicationService
         {
             RepositoryBase = repositoryBase;
         }
-        public ApplicationService()
-        {
-
-        }
 
         public virtual async Task<DTO> CreateAsync(DTO dto)
         {

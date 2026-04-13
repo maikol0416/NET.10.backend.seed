@@ -1,5 +1,4 @@
 using AutoMapper;
-using Domain.Ports.Repository.Base;
 
 namespace Application.Base;
 
@@ -7,9 +6,45 @@ public abstract partial class ApplicationService<ENT, DTO> : IApplicationService
         where ENT : class, new()
         where DTO : class, new()
     {
-
-        private IMapper Mapper;
         
+        private IMapper Mapper;
+        private MapperConfigurationExpression configurationmapper;
+        protected void CreateMapper()
+        {
+            MapperConfiguration cnfMapper = new(configurationmapper);
+            Mapper = cnfMapper.CreateMapper();
+        }
+        public void CreateMapperExpresion<ENT, DTO>(Action<IMapperConfigurationExpression> configure) where ENT : class, new() where DTO : class, new()
+        {
+            configurationmapper = CreateConfiguration<ENT, DTO>();
+            CreateMapperExpresion(configure);
+        }
+        public void CreateMapperExpresion(Action<IMapperConfigurationExpression> configure)
+        {
+            configure(configurationmapper);
+            CreateMapper();
+        }
+
+        protected void CreateMapper<ENT, DTO>() where ENT : class, new() where DTO : class, new()
+        {
+            configurationmapper = CreateConfiguration<ENT, DTO>();
+            CreateMapper();
+        }
+
+        private static MapperConfigurationExpression CreateConfiguration<ENT, DTO>() where ENT : class, new() where DTO : class, new()
+        {
+            var cnf = new MapperConfigurationExpression
+            {
+                AllowNullCollections = true
+            };
+            cnf.CreateMap<ENT, DTO>();
+            cnf.CreateMap<DTO, ENT>();
+            cnf.CreateMap<DateTimeOffset, DateTime>().ConvertUsing(n => n.UtcDateTime);
+            cnf.CreateMap<DateTime, DateTimeOffset>().ConvertUsing(n => DateTime.SpecifyKind(n, DateTimeKind.Utc));
+            return cnf;
+        }
+        
+
         public DTO MapToDTO(ENT entity)
         {
             return Mapper.Map<DTO>(entity);

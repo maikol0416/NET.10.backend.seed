@@ -10,16 +10,16 @@ public record LocationValueObject : ValueObject
                                string city,
                                string neighborhood)
     {
-        if(string.IsNullOrEmpty(Number))
+        if(string.IsNullOrEmpty(number))
             throw new DomainException("Number cannot be null");
         
-        if(string.IsNullOrEmpty(Detail))
+        if(string.IsNullOrEmpty(detail))
             throw new DomainException("Detail cannot be null");
         
-        if(string.IsNullOrEmpty(Country))
+        if(string.IsNullOrEmpty(country))
             throw new DomainException("Country cannot be null");
         
-        if(string.IsNullOrEmpty(City))
+        if(string.IsNullOrEmpty(city))
             throw new DomainException("City cannot be null");
         
         if(string.IsNullOrEmpty(neighborhood))

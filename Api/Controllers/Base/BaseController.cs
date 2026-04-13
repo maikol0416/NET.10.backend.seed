@@ -3,9 +3,11 @@ using FluentValidation;
 using MediatR;
 using System.Text.Json;
 using Application.Base;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Api.Controllers;
 
+[AllowAnonymous]
 [ApiController]
 public abstract partial class BaseController<ENT, DTO> : ControllerBase
     where ENT : class, new()

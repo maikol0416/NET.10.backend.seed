@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using MediatR;
-using Application.PhysicalStructure.Commands;
 using Application.Dto;
 using Domain.BoundedContext.Properties;
 using FluentValidation;
