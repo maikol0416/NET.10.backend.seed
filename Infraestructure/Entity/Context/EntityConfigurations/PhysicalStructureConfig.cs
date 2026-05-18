@@ -9,6 +9,16 @@ public class PhysicalStructureConfig :IEntityTypeConfiguration<PhysicalStructure
     {
         builder.ToTable("PhysicalStructures");
         builder.HasKey(p => p.Id);
+
+        builder.Property(p => p.Status)
+            .IsRequired()
+            .HasMaxLength(1);
+
+        builder.Property(p => p.CreatedAt)
+            .IsRequired();
+
+        builder.Property(p => p.UpdateAt)
+            .IsRequired(false);
         
         builder.Property(p => p.Name)
             .IsRequired()

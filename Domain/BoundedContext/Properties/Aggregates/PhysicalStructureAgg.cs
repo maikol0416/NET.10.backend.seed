@@ -13,7 +13,7 @@ public class PhysicalStructureAgg : AggregateRoot
                                 int unitCount,
                                 LocationValueObject location,
                                 List<CommonAreaValueObject> commonAreas
-                                )
+                                ):base()
     {
         Name = name;
         Nit = nit;

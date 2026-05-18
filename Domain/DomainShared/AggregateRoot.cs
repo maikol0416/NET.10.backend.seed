@@ -4,10 +4,8 @@ namespace Domain.DomainShared;
 
 public abstract class AggregateRoot : Entity
 {
-    public AggregateRoot()
-    {
-        
-    }
+    public AggregateRoot() : base() { }
+
     private readonly List<IDomainEvent> _domainEvents = new();
     public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
