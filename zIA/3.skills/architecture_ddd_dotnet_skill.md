@@ -251,6 +251,162 @@ Solo deben:
     2) Invocar el comportamiento del Agregado, 
     3) Guardar en la base de datos. NUNCA deben contener lógica de negocio (condicionales if evaluando estado para tomar decisiones del negocio).
 
+---
+
+## Mappers (AutoMapper):
+
+### Teoría
+El Mapper es la capa de traducción entre el **Dominio** (Aggregate Roots, Value Objects) y la **Aplicación** (DTOs). Su responsabilidad es única: convertir datos en una dirección u otra sin contener lógica de negocio.
+
+Reglas clave:
+- El Mapper **nunca** instancia el Agregado directamente asignando propiedades. Siempre usa el **constructor de negocio** del Agregado (vía `ConstructUsing`) para respetar las invariantes.
+- La dirección **DTO → Agregado** usa `ConstructUsing`, pasando los argumentos al constructor del Agregado e instanciando los Value Objects dentro del mapper.
+- La dirección **Agregado → DTO** usa `ForMember` para proyectar cada campo, incluyendo los campos anidados de los Value Objects (`src.VO.Campo`).
+- El Mapper es una clase `static` con un método `Expresion(IMapperConfigurationExpression cnf)` que se registra en el constructor del Service correspondiente.
+
+### Ubicación en la arquitectura
+```
+Application/
+└── {NombreAgregado}/
+    └── Mapper/
+        └── {NombreAgregado}Mapper.cs   ← clase static, método Expresion()
+```
+El Mapper se registra en el `{NombreAgregado}Service` mediante:
+```csharp
+CreateMapperExpresion<{Agg}, {Dto}>(cnf => {NombreAgregado}Mapper.Expresion(cnf));
+```
+
+### C# ejemplo mapper
+```csharp
+using Application.Dto;
+using AutoMapper;
+using Domain.BoundedContext.Properties;
+
+namespace Application.Service;
+
+public static class PhysicalStructureMapper
+{
+    public static void Expresion(IMapperConfigurationExpression cnf)
+    {
+        // DTO → Aggregate Root
+        // Usa ConstructUsing para invocar el constructor de negocio del Agregado.
+        // Los Value Objects se construyen aquí respetando sus Guard Clauses.
+        cnf.CreateMap<PhysicalStructureDto, PhysicalStructureAgg>()
+            .ConstructUsing(src => new PhysicalStructureAgg(
+                src.Name,
+                src.Nit,
+                src.UnitCount,
+                new LocationValueObject(         // OwnsOne: construido directamente
+                    src.Number,
+                    src.DetailLocation,
+                    src.Country,
+                    src.City,
+                    src.Neighborhood
+                ),
+                src.CommonAreas               // OwnsMany: proyectado desde lista del DTO
+                    .Select(ca => new CommonAreaValueObject(ca.Name, ca.Description))
+                    .ToList()
+            ));
+
+        // Aggregate Root → DTO
+        // Proyección plana: los campos de los Value Objects se mapean
+        // accediendo a la propiedad del VO dentro del Agregado (src.VO.Campo).
+        cnf.CreateMap<PhysicalStructureAgg, PhysicalStructureDto>()
+            .ForMember(dest => dest.Name,           opt => opt.MapFrom(src => src.Name))
+            .ForMember(dest => dest.Nit,            opt => opt.MapFrom(src => src.Nit))
+            .ForMember(dest => dest.UnitCount,      opt => opt.MapFrom(src => src.UnitCount))
+            .ForMember(dest => dest.Number,         opt => opt.MapFrom(src => src.Location.Number))
+            .ForMember(dest => dest.DetailLocation, opt => opt.MapFrom(src => src.Location.Detail))
+            .ForMember(dest => dest.Country,        opt => opt.MapFrom(src => src.Location.Country))
+            .ForMember(dest => dest.City,           opt => opt.MapFrom(src => src.Location.City))
+            .ForMember(dest => dest.Neighborhood,   opt => opt.MapFrom(src => src.Location.Neighborhood));
+    }
+}
+```
+
+---
+
+## Controllers (Capa API):
+
+### Teoría
+Los Controllers son la **puerta de entrada HTTP** de la aplicación. Su responsabilidad es mínima: recibir la solicitud, delegar la validación al Validator y delegar la ejecución al Mediator (CQRS). No contienen lógica de negocio ni de mapeo.
+
+Reglas clave:
+- Todo Controller hereda de `BaseController<ENT, DTO>`, que ya provee los endpoints `POST /create`, `PUT /update` y `DELETE /delete` con validación y respuesta estandarizada.
+- El Controller concreto **solo necesita declarar su herencia** y recibir por inyección `IValidator<DTO>` e `IMediator`.
+- El `BaseController` se encarga de: validar el DTO con FluentValidation → enviar el comando por MediatR → envolver la respuesta en `ResponseApi<T>`.
+- Todos los endpoints concretos van en `Api/Controllers/v1/` para versionado explícito.
+- Prohibido inyectar repositorios, Application Services ni DbContext directamente en un Controller.
+
+### Flujo interno de BaseController
+```
+HTTP Request → Controller.Create(DTO)
+    → IValidator<DTO>.ValidateAsync()    ← FluentValidation (Application/Validator)
+    → IMediator.Send(CreateCommand<ENT,DTO>)  ← MediatR despacha al Handler
+    → HandlerResponse(result)            ← envuelve en ResponseApi<T>
+→ HTTP Response 200 OK
+```
+
+### Ubicación en la arquitectura
+```
+Api/
+└── Controllers/
+    ├── Base/
+    │   ├── BaseController.cs    ← abstract, genérico: BaseController<ENT, DTO>
+    │   │                          provee: POST /create, PUT /update, DELETE /delete
+    │   └── ResponseApi.cs       ← wrapper de respuesta: { Data, Status, Message }
+    └── v1/
+        └── {Nombre}Controller.cs  ← hereda BaseController, sin lógica adicional
+```
+
+### C# ejemplo controller concreto
+```csharp
+using Microsoft.AspNetCore.Mvc;
+using MediatR;
+using Application.Dto;
+using Domain.BoundedContext.Properties;
+using FluentValidation;
+
+namespace Api.Controllers;
+
+// La ruta se infiere del nombre de la clase: api/PhysicalStructure
+[Route("api/[controller]")]
+public class PhysicalStructureController 
+    : BaseController<PhysicalStructureAgg, PhysicalStructureDto>
+{
+    // Recibe IValidator y IMediator, los pasa al BaseController.
+    // No necesita ninguna lógica adicional: el BaseController provee
+    // los endpoints create, update y delete automáticamente.
+    public PhysicalStructureController(
+        IValidator<PhysicalStructureDto> validator,
+        IMediator mediator)
+        : base(validator, mediator)
+    {
+    }
+}
+```
+
+### C# referencia BaseController (no modificar)
+```csharp
+// Api/Controllers/Base/BaseController.cs
+// Clase base genérica que todos los controllers concretos heredan.
+// Provee los 3 endpoints estándar con validación y respuesta unificada.
+
+[AllowAnonymous]
+[ApiController]
+public abstract partial class BaseController<ENT, DTO> : ControllerBase
+    where ENT : class, new()
+    where DTO : class, new()
+{
+    // POST api/{Nombre}/create  → valida con FluentValidation → envía CreateCommand
+    // PUT  api/{Nombre}/update  → valida con FluentValidation → envía UpdateCommand
+    // DELETE api/{Nombre}/delete → envía DeleteCommand
+    // Toda respuesta exitosa se envuelve en: { Data: T, Status: true, Message: "..." }
+}
+```
+
+---
+
 ## 2. LO QUE NO DEBES HACER (Anti-patrones y Violaciones de Reglas)
 ### Prohibiciones Arquitectónicas:
 

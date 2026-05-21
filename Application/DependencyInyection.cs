@@ -4,6 +4,7 @@ using Application.Dto;
 using Application.Service;
 using Application.Validator;
 using Domain.BoundedContext.Properties;
+using Domain.BoundedContext.DocumentManagement;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,12 +26,14 @@ public static class DependencyInyection
         });
 
         services.RegisterMediatrAbstractService<PhysicalStructureService, PhysicalStructureDto, PhysicalStructureAgg, IPhysicalStructureService>();
+        services.RegisterMediatrAbstractService<DocumentService, DocumentDto, DocumentAgg, IDocumentService>();
         return services;
     }
 
     public static void RegisterValidators(this IServiceCollection services)
     {
         services.AddScoped<IValidator<PhysicalStructureDto>, PhysicalStructureValidator>();
+        services.AddScoped<IValidator<DocumentDto>, DocumentValidator>();
     }
 
     public static void RegisterMediatrAbstractService<Service, DTO, ENT, TImplementation>(this IServiceCollection services)

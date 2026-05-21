@@ -52,7 +52,7 @@ public abstract partial class ApplicationService<ENT, DTO> : IApplicationService
 
         public ENT MapToENT(DTO dto)
         {
-            return Mapper.Map<ENT>(dto);
+            return Mapper.Map<ENT>(dto);                 
         }
 
         public List<DTO> MapLstToDTO(List<ENT> entity)

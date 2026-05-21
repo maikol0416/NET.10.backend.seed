@@ -13,6 +13,7 @@ public partial class EntityDbContext : DbContext,IEntityDbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new PhysicalStructureConfig());
+        modelBuilder.ApplyConfiguration(new DocumentConfig());
     }
 
 }

@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using Domain.Ports;
 using Infraestructure.Repository.Properties;
+using Infraestructure.Repository.DocumentManagement;
 
 namespace Infraestructure.Entity;
 
@@ -25,6 +26,7 @@ public static class DependencyInjection
 
         //Repository
         services.AddScoped<IPhysicalStructureRepository,PhysicalStructureRepository>();
+        services.AddScoped<IDocumentRepository, DocumentRepository>();
 
         return services;
     }

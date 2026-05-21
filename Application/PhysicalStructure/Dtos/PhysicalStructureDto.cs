@@ -10,5 +10,5 @@ public class PhysicalStructureDto
     public string Country { get;  set; }
     public string City { get;  set; }
     public string Neighborhood { get;  set; }
-
+    public List<CommonAreaDto> CommonAreas { get; set; }
 }

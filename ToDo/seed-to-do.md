@@ -7,3 +7,5 @@
 #Ejemplo de eventos de dominio.
 
 #Control de exception transversales 
+
+#context ReadOnly
