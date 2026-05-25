@@ -2,7 +2,7 @@ using AutoMapper;
 
 namespace Application.Base;
 
-public abstract partial class ApplicationService<ENT, DTO> : IApplicationService<ENT, DTO>
+public abstract partial class ApplicationServiceMapper<ENT, DTO>
         where ENT : class, new()
         where DTO : class, new()
     {

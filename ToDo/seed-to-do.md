@@ -6,6 +6,6 @@
 
 #Ejemplo de eventos de dominio.
 
-#Control de exception transversales 
+#Control de exception transversales //ok
 
-#context ReadOnly
+#context ReadOnly //ok

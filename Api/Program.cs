@@ -1,4 +1,5 @@
 using Application;
+using Api.Middlewares;
 using Infraestructure.Entity;
 using Scalar.AspNetCore;
 
@@ -17,6 +18,9 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     app.MapScalarApiReference();
 }
+
+// Middleware global de excepciones — debe ser el primero del pipeline
+app.UseMiddleware<ExceptionHandlerMiddleware>();
 
 app.UseHttpsRedirection();
 app.MapControllers();

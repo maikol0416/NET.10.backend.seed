@@ -13,20 +13,20 @@ public static class PhysicalStructureMapper
                 src.Name,
                 src.Nit,
                 src.UnitCount,
-                new LocationValueObject(                        // OwnsOne: construido directamente
+                new LocationValueObject(                      
                     src.Number,
                     src.DetailLocation,
                     src.Country,
                     src.City,
                     src.Neighborhood
                 ),
-                src.CommonAreas                                 // OwnsMany: proyectado desde lista del DTO
+                src.CommonAreas                                 
                     .Select(ca => new CommonAreaValueObject(ca.Name, ca.Description))
                     .ToList()
             ))
-            .ForMember(dest => dest.Name,        opt => opt.Ignore())  // private set — manejado en ctor
-            .ForMember(dest => dest.CommonsAreas, opt => opt.Ignore())  // private set — manejado en ctor
-            .ForMember(dest => dest.Location,    opt => opt.Ignore()); // private set — manejado en ctor
+            .ForMember(dest => dest.Name,        opt => opt.Ignore())
+            .ForMember(dest => dest.CommonsAreas, opt => opt.Ignore())  
+            .ForMember(dest => dest.Location,    opt => opt.Ignore()); 
 
         cnf.CreateMap<PhysicalStructureAgg, PhysicalStructureDto>()
             .ForMember(dest => dest.Name,           opt => opt.MapFrom(src => src.Name))

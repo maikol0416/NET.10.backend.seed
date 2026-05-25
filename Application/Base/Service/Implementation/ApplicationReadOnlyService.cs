@@ -1,0 +1,44 @@
+using System.Linq.Expressions;
+using Domain.Ports.Repository.Base;
+
+namespace Application.Base;
+
+public abstract partial class ApplicationReadOnlyService<ENT, DTO>
+    : ApplicationServiceMapper<ENT, DTO>, IApplicationReadOnlyService<ENT, DTO>
+    where ENT : class, new()
+    where DTO : class, new()
+{
+    protected IBaseReadOnlyRepository<ENT> ReadOnlyRepository { get; }
+
+    protected ApplicationReadOnlyService(IBaseReadOnlyRepository<ENT> readOnlyRepository)
+    {
+        ReadOnlyRepository = readOnlyRepository;
+    }
+
+    /// <inheritdoc/>
+    public virtual async Task<DTO?> GetByIdAsync(int id)
+    {
+        var entity = await ReadOnlyRepository.GetByIdAsync(id);
+        return entity is null ? null : MapToDTO(entity);
+    }
+
+    /// <inheritdoc/>
+    public virtual async Task<IEnumerable<DTO>> GetAllAsync()
+    {
+        var entities = await ReadOnlyRepository.GetAllAsync();
+        return MapLstToDTO(entities.ToList());
+    }
+
+    /// <inheritdoc/>
+    public virtual async Task<IEnumerable<DTO>> FindAsync(Expression<Func<ENT, bool>> predicate)
+    {
+        var entities = await ReadOnlyRepository.FindAsync(predicate);
+        return MapLstToDTO(entities.ToList());
+    }
+
+    /// <inheritdoc/>
+    public virtual async Task<bool> ExistsAsync(Expression<Func<ENT, bool>> predicate)
+    {
+        return await ReadOnlyRepository.ExistsAsync(predicate);
+    }
+}

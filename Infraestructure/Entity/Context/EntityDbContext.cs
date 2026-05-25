@@ -3,17 +3,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infraestructure.Entity;
 
-public partial class EntityDbContext : DbContext,IEntityDbContext
+public partial class EntityDbContext : EntityDBSets, IEntityDbContext
 {
     public EntityDbContext(DbContextOptions<EntityDbContext> options) : base(options)
     {
 
     }
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        modelBuilder.ApplyConfiguration(new PhysicalStructureConfig());
-        modelBuilder.ApplyConfiguration(new DocumentConfig());
-    }
-
 }

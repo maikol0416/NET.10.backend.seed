@@ -1,6 +1,6 @@
 namespace Application.Base;
 
- public interface IApplicationService<ENT, DTO>
+public interface IApplicationService<ENT, DTO>
     where ENT : class, new()
     where DTO : class, new()
 {
@@ -8,9 +8,5 @@ namespace Application.Base;
     Task<bool> CreateListAsync(List<DTO> dtos);
     Task<bool> DeleteEntity(int id);
     Task<DTO> UpdateAsync(DTO dto);
-    DTO MapToDTO(ENT entity);
-    ENT MapToENT(DTO dto);
-    List<DTO> MapLstToDTO(List<ENT> entity);
-    List<ENT> MapLstToENT(List<DTO> dto);
-
 }
+

@@ -3,7 +3,7 @@ using Domain.Ports.Repository.Base;
 
 namespace Application.Base;
 
-public abstract partial class ApplicationService<ENT, DTO> : IApplicationService<ENT, DTO>
+public abstract partial class ApplicationService<ENT, DTO> : ApplicationServiceMapper<ENT, DTO>, IApplicationService<ENT, DTO>
         where ENT : class, new()
         where DTO : class, new()
     {

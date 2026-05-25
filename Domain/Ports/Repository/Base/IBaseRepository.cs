@@ -7,6 +7,7 @@ where T : class, new()
     Task CreateListAsync(List<T> entities);
     Task<T> UpdateAsync(T entity);
     Task<bool> DeleteEntity(int id);
-    Task<T> GetById(int id);
-
+    Task<T?> GetById(int id);
+    Task<IEnumerable<T>> GetAllAsync();
 }
+

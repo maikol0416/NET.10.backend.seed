@@ -52,8 +52,14 @@ public class BaseRepositiry<T> : IBaseRepository<T>
         return returnDelete;
     }
 
-    public virtual async Task<T> GetById(int id)
+    public virtual async Task<T?> GetById(int id)
     {
-        return await entity.FindAsync(id)?? new T();
+        return await entity.FindAsync(id);
+    }
+
+    public virtual async Task<IEnumerable<T>> GetAllAsync()
+    {
+        return await entity.ToListAsync();
     }
 }
+

@@ -45,8 +45,31 @@ public static class DependencyInyection
             services.AddScoped(typeof(TImplementation), typeof(Service));
             services.AddScoped(typeof(IApplicationService<ENT, DTO>), typeof(Service));
 
+            // Command handlers
             services.AddScoped(typeof(IRequestHandler<CreateCommand<ENT, DTO>, DTO>),typeof(CreateHandler<ENT, DTO>));
             services.AddScoped(typeof(IRequestHandler<UpdateCommand<ENT, DTO>, DTO>), typeof(UpdateHandler<ENT, DTO>));
             services.AddScoped(typeof(IRequestHandler<DeleteCommand<ENT, DTO>, bool>), typeof(DeleteHandler<ENT, DTO>));
+
+            // Query handlers — disponibles automáticamente en BaseController (getById / getAll)
+            services.AddScoped(typeof(IRequestHandler<GetByIdQuery<ENT, DTO>, DTO?>), typeof(GetByIdHandler<ENT, DTO>));
+            services.AddScoped(typeof(IRequestHandler<GetAllQuery<ENT, DTO>, IEnumerable<DTO>>), typeof(GetAllHandler<ENT, DTO>));
+        }
+
+    /// <summary>
+    /// Registra un servicio de solo lectura (CQRS — Query side) y sus handlers genéricos.
+    /// Análogo a <see cref="RegisterMediatrAbstractService{Service,DTO,ENT,TImplementation}"/>
+    /// pero para <see cref="ApplicationReadOnlyService{ENT,DTO}"/>.
+    /// </summary>
+    public static void RegisterMediatrAbstractReadOnlyService<Service, DTO, ENT, TImplementation>(this IServiceCollection services)
+            where Service : ApplicationReadOnlyService<ENT, DTO>
+            where DTO : class, new()
+            where ENT : class, new()
+            where TImplementation : IApplicationReadOnlyService<ENT, DTO>
+        {
+            services.AddScoped(typeof(TImplementation), typeof(Service));
+            services.AddScoped(typeof(IApplicationReadOnlyService<ENT, DTO>), typeof(Service));
+
+            services.AddScoped(typeof(IRequestHandler<GetByIdQuery<ENT, DTO>, DTO?>),  typeof(GetByIdHandler<ENT, DTO>));
+            services.AddScoped(typeof(IRequestHandler<GetAllQuery<ENT, DTO>, IEnumerable<DTO>>), typeof(GetAllHandler<ENT, DTO>));
         }
 }
