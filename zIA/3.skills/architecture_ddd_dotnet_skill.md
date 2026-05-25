@@ -7,7 +7,7 @@ Bounded Contexts: Antes de proponer una solución, asegúrate de identificar a q
 
 Lenguaje Ubicuo: Usa nombres de clases y métodos que los expertos del negocio entiendan. Nunca uses términos puramente técnicos en el dominio (ej. usa PromoteToManager() en lugar de UpdateStatus(2)).
 
-C# ejemplo arquitectura de solution (estructura real del proyecto)
+C# ejemplo arquitectura de solution (estructura real del proyecto — incluyendo CQRS ReadOnly)
 ```
 NET.10.backend.seed.slnx
 ├── Domain/                                    # Capa de Dominio
@@ -29,66 +29,80 @@ NET.10.backend.seed.slnx
 │   └── Ports/                                 # Contratos (interfaces) del dominio
 │       ├── Repository/
 │       │   ├── Base/
-│       │   │   ├── IBaseRepository.cs         # Contrato genérico de repositorio
-│       │   │   └── IEntityDbContext.cs        # Contrato del DbContext
-│       │   └── IPhysicalStructureRepository.cs
+│       │   │   ├── IBaseRepository.cs         # Contrato genérico de repositorio (escritura)
+│       │   │   ├── IBaseReadOnlyRepository.cs # Contrato genérico repositorio solo lectura
+│       │   │   ├── IEntityDbContext.cs        # Contrato DbContext de escritura
+│       │   │   └── IEntityReadOnlyDbContext.cs# Contrato DbContext solo lectura (NoTracking)
+│       │   ├── IPhysicalStructureRepository.cs
+│       │   └── IPhysicalStructureReadOnlyRepository.cs
 │       └── Events/
 │           └── Properties/
-│               └── IDomainEvent.cs            # Contrato de evento de dominio
+│               └── IDomainEvent.cs
 │
 ├── Application/                               # Capa de Aplicación (Orquestación)
-│   ├── DependencyInyection.cs                 # Registro de servicios de Application
-│   ├── Base/                                  # Infraestructura transversal de Application
+│   ├── DependencyInyection.cs
+│   ├── Base/
 │   │   ├── Cqrs/
-│   │   │   └── Command/
-│   │   │       ├── CreateCommand.cs           # Contrato base para comandos Create
-│   │   │       ├── UpdateCommand.cs           # Contrato base para comandos Update
-│   │   │       └── DeleteCommand.cs           # Contrato base para comandos Delete
+│   │   │   ├── Command/
+│   │   │   │   ├── CreateCommand.cs
+│   │   │   │   ├── UpdateCommand.cs
+│   │   │   │   └── DeleteCommand.cs
+│   │   │   └── Query/
+│   │   │       ├── GetByIdQuery.cs            # Query + Handler (Query side CQRS)
+│   │   │       └── GetAllQuery.cs             # Query + Handler (Query side CQRS)
 │   │   └── Service/
-│   │       ├── IApplicationService.cs         # Contrato base del Application Service
+│   │       ├── IApplicationService.cs         # Contrato base Command side
+│   │       ├── IApplicationReadOnlyService.cs # Contrato base Query side
 │   │       └── Implementation/
-│   │           ├── ApplicationService.cs      # Implementación base (CRUD orquestado)
-│   │           └── ApplicationService.Mapper.cs
-│   └── PhysicalStructure/                     # Módulo de aplicación por agregado
-│       ├── Cqrs/
-│       │   └── Commands/
-│       │       └── CreatePhysicalStructureCommand.cs
+│   │           ├── ApplicationService.cs      # Implementación base RUD
+│   │           ├── ApplicationServiceMapper.cs# Mapper compartido (AutoMapper)
+│   │           └── ApplicationReadOnlyService.cs # Implementación base solo lectura
+│   └── PhysicalStructure/
+│       ├── Cqrs/Commands/
+│       │   └── CreatePhysicalStructureCommand.cs
 │       ├── Dtos/
-│       │   └── PhysicalStructureDto.cs
+│       │   ├── PhysicalStructureDto.cs
+│       │   └── CommonAreaDto.cs               # DTO por VO con OwnsMany (archivo separado)
 │       ├── Mapper/
 │       │   └── PhysicalStructureMapper.cs
 │       ├── Service/
 │       │   ├── IPhysicalStructureService.cs
-│       │   └── PhysicalStructureService.cs
+│       │   ├── PhysicalStructureService.cs
+│       │   ├── IPhysicalStructureReadOnlyService.cs  # Contrato Query side
+│       │   └── PhysicalStructureReadOnlyService.cs   # Implementación Query side
 │       └── Validator/
 │           └── PhysicalStructureValidator.cs
 │
-├── Infraestructure/                           # Capa de Infraestructura (EF + Repositorios)
+├── Infraestructure/
 │   ├── Entity/
 │   │   ├── Context/
-│   │   │   ├── EntityDbContext.cs             # DbContext principal (OnModelCreating)
-│   │   │   ├── EntityDbContext.dbsets.cs      # Partial: DbSet<PhysicalStructureAgg>
+│   │   │   ├── EntityDBSets.cs                # Clase base abstracta: DbSets + OnModelCreating
+│   │   │   │                                  # Compartida por ambos DbContexts
+│   │   │   ├── EntityDbContext.cs             # DbContext escritura (hereda EntityDBSets)
+│   │   │   ├── EntityReadOnlyDbContext.cs     # DbContext solo lectura NoTracking
+│   │   │   │                                  # (hereda EntityDBSets, IEntityReadOnlyDbContext)
 │   │   │   └── EntityConfigurations/
-│   │   │       └── PhysicalStructureConfig.cs # Fluent API (IEntityTypeConfiguration)
+│   │   │       └── PhysicalStructureConfig.cs
 │   │   ├── Repository/
 │   │   │   ├── Base/
-│   │   │   │   └── BaseRepositiry.cs          # Implementación genérica de IBaseRepository
+│   │   │   │   ├── BaseRepositiry.cs          # Implementación genérica escritura
+│   │   │   │   └── BaseReadOnlyRepository.cs  # Implementación genérica solo lectura
 │   │   │   └── Properties/
-│   │   │       └── PhysicalStructureRepository.cs
-│   │   └── DependencyInjection.cs             # Registro de servicios de Infrastructure
-│   └── Migrations/                            # Migraciones EF Core generadas
+│   │   │       ├── PhysicalStructureRepository.cs
+│   │   │       └── PhysicalStructureReadOnlyRepository.cs
+│   │   └── DependencyInjection.cs
+│   └── Migrations/
 │
-└── Api/                                       # Capa de Presentación (ASP.NET Core)
+└── Api/
     ├── Program.cs
-    ├── appsettings.json
-    ├── appsettings.Development.json
     └── Controllers/
         ├── Base/
-        │   ├── BaseController.cs              # Controller base con helper de respuestas
-        │   └── ResponseApi.cs                 # Wrapper de respuesta estándar
+        │   ├── BaseController.cs
+        │   └── ResponseApi.cs
         └── v1/
             └── PhysicalStructureController.cs
 ```
+
 
 
 # Reglas de Diseño Táctico (Implementación línea a línea):
@@ -215,41 +229,176 @@ Los eventos deben representar algo que ya ocurrió en el pasado (ej. OrderShippe
     // ejemplo de eventos pendiente de implementar
 ```
 
-## Repositorios:
+## Repositorios de Escritura — CQRS (Command Side):
 
-Solo debe haber repositorios para las Raíces de Agregado (Aggregate Roots).
+### Teoría
+Solo debe haber repositorios para las **Raíces de Agregado** (Aggregate Roots). Nunca para entidades internas ni Value Objects.
 
-El contrato (interfaz) pertenece al Dominio (IOrderRepository). La implementación pertenece a la Infraestructura (OrderRepository : IOrderRepository).
+Reglas clave:
+- El contrato (`I{Nombre}Repository`) pertenece al **Dominio** (`Domain/Ports/Repository/`) — el dominio dicta el contrato.
+- La implementación (`{Nombre}Repository`) pertenece a la **Infraestructura** y hereda de `BaseRepositiry<TAgg>`.
+- Usa `IEntityDbContext` (con tracking) para operar en el Command side.
+- Prohibido inyectar repositorios en Entidades o Value Objects. Solo los Application Services (o Command Handlers) los usan.
 
-### C# ejemplo 
+### Artefactos que genera este patrón por cada Agregado
+
+| Capa | Archivo | Descripción |
+|---|---|---|
+| Domain/Ports | `I{Nombre}Repository.cs` | Puerto de escritura del dominio |
+| Infraestructure | `{Nombre}Repository.cs` | Implementación: hereda `BaseRepositiry` |
+
+### C# ejemplo — Interfaz de repositorio de escritura (Domain/Ports)
+```csharp
+using Domain.Ports.Repository.Base;
+using Domain.BoundedContext.{BoundedContext};
+
+namespace Domain.Ports;
+
+public interface I{Nombre}Repository : IBaseRepository<{Nombre}Agg>
+{
+}
 ```
-    // ejemplo repository
-    using Domain.Ports;
-    using Domain.BoundedContext.Properties;
-    using Infraestructure.Repository.Shared;
 
-    namespace Infraestructure.Repository.Properties;
+### C# ejemplo — Repositorio de escritura (Infraestructure)
+```csharp
+using Domain.Ports;
+using Domain.BoundedContext.{BoundedContext};
+using Infraestructure.Repository.Shared;
 
-    public class PhysicalStructureRepository: BaseRepositiry<PhysicalStructureAgg>, IPhysicalStructureRepository
+namespace Infraestructure.Repository.{BoundedContext};
+
+public class {Nombre}Repository : BaseRepositiry<{Nombre}Agg>, I{Nombre}Repository
+{
+    public {Nombre}Repository(IEntityDbContext entityDbContext)
+        : base(entityDbContext)
     {
-        public PhysicalStructureRepository(IEntityDbContext entityDbContext):
-        base(entityDbContext)
-        {
-            
-        }
     }
-
+}
 ```
 
-## Servicios de Dominio vs. Servicios de Aplicación:
+### Registro en DI — Infrastructure (`DependencyInjection.cs`)
+```csharp
+services.AddScoped<I{Nombre}Repository, {Nombre}Repository>();
+```
 
-Domain Service: Úsalo solo cuando una regla de negocio involucre múltiples Agregados y no pertenezca lógicamente a ninguno de ellos.
+## Application Services — Command Side:
 
-Application Service (o Command Handlers en CQRS): 
-Solo deben: 
-    1) Obtener de la base de datos, 
-    2) Invocar el comportamiento del Agregado, 
-    3) Guardar en la base de datos. NUNCA deben contener lógica de negocio (condicionales if evaluando estado para tomar decisiones del negocio).
+### Teoría
+Los Application Services de escritura orquestan el flujo de un **comando** (Create, Update, Delete). Su responsabilidad exclusiva es:
+1. Obtener el Agregado del repositorio.
+2. Invocar el método de negocio en el Agregado.
+3. Guardar el Agregado.
+
+Nunca contienen lógica de negocio (condicionales `if` evaluando estado del dominio).
+
+> Domain Service: Úsalo solo cuando una regla de negocio involucre múltiples Agregados y no pertenezca lógicamente a ninguno de ellos.
+
+### Artefactos por Agregado
+
+| Archivo | Descripción |
+|---|---|
+| `I{Nombre}Service.cs` | Contrato del servicio de escritura |
+| `{Nombre}Service.cs` | Implementación: hereda `ApplicationService<TAgg, TDto>` |
+
+### C# ejemplo — Interfaz del servicio de escritura
+```csharp
+using Application.Base;
+using Application.Dto;
+using Domain.BoundedContext.{BoundedContext};
+
+namespace Application.Service;
+
+public interface I{Nombre}Service : IApplicationService<{Nombre}Agg, {Nombre}Dto>
+{
+}
+```
+
+### C# ejemplo — Implementación del servicio de escritura
+```csharp
+using Application.Base;
+using Application.Dto;
+using Domain.BoundedContext.{BoundedContext};
+using Domain.Ports;
+
+namespace Application.Service;
+
+public class {Nombre}Service
+    : ApplicationService<{Nombre}Agg, {Nombre}Dto>, I{Nombre}Service
+{
+    public {Nombre}Service(I{Nombre}Repository repository) : base(repository)
+    {
+        CreateMapperExpresion<{Nombre}Agg, {Nombre}Dto>(cnf =>
+        {
+            {Nombre}Mapper.Expresion(cnf);
+        });
+    }
+}
+```
+
+### Registro en DI — Application (`DependencyInyection.cs`)
+```csharp
+services.RegisterMediatrAbstractService<
+    {Nombre}Service, {Nombre}Dto, {Nombre}Agg, I{Nombre}Service>();
+```
+
+---
+
+## Application Services — Query Side (ReadOnly):
+
+### Teoría
+Los Application Services de solo lectura orquestan las **queries** (`GetByIdAsync`, `GetAllAsync`, `FindAsync`, `ExistsAsync`). Usan el `EntityReadOnlyDbContext` (NoTracking) y el mismo Mapper que el servicio de escritura.
+
+### Artefactos por Agregado
+
+| Archivo | Descripción |
+|---|---|
+| `I{Nombre}ReadOnlyService.cs` | Contrato del servicio de lectura |
+| `{Nombre}ReadOnlyService.cs` | Implementación: hereda `ApplicationReadOnlyService<TAgg, TDto>` |
+
+### C# ejemplo — Interfaz del servicio de lectura
+```csharp
+using Application.Base;
+using Application.Dto;
+using Domain.BoundedContext.{BoundedContext};
+
+namespace Application.Service;
+
+public interface I{Nombre}ReadOnlyService
+    : IApplicationReadOnlyService<{Nombre}Agg, {Nombre}Dto>
+{
+}
+```
+
+### C# ejemplo — Implementación del servicio de lectura
+```csharp
+using Application.Base;
+using Application.Dto;
+using Domain.BoundedContext.{BoundedContext};
+using Domain.Ports;
+
+namespace Application.Service;
+
+public class {Nombre}ReadOnlyService
+    : ApplicationReadOnlyService<{Nombre}Agg, {Nombre}Dto>,
+      I{Nombre}ReadOnlyService
+{
+    public {Nombre}ReadOnlyService(I{Nombre}ReadOnlyRepository repository)
+        : base(repository)
+    {
+        // Reutiliza el mismo mapper del Service de escritura
+        CreateMapperExpresion<{Nombre}Agg, {Nombre}Dto>(cnf =>
+        {
+            {Nombre}Mapper.Expresion(cnf);
+        });
+    }
+}
+```
+
+### Registro en DI — Application (`DependencyInyection.cs`)
+```csharp
+services.RegisterMediatrAbstractReadOnlyService<
+    {Nombre}ReadOnlyService, {Nombre}Dto, {Nombre}Agg, I{Nombre}ReadOnlyService>();
+```
 
 ---
 
@@ -323,6 +472,66 @@ public static class PhysicalStructureMapper
     }
 }
 ```
+
+---
+
+## Repositorios de Solo Lectura — CQRS (Query Side):
+
+### Teoría
+El proyecto implementa **CQRS con dos DbContexts separados**:
+- **Command side (`EntityDbContext`)**: Con tracking, para operaciones de escritura (Create, Update, Delete).
+- **Query side (`EntityReadOnlyDbContext`)**: Sin tracking (`NoTrackingWithIdentityResolution`), optimizado para consultas de lectura. Hereda de `EntityDBSets` (clase base abstracta que centraliza `DbSets` y `OnModelCreating`).
+
+Reglas clave:
+- Cada Aggregate Root tiene **dos repositorios**: `I{Nombre}Repository` (escritura) e `I{Nombre}ReadOnlyRepository` (lectura). Ambos contratos pertenecen al Dominio (Ports).
+- `IEntityReadOnlyDbContext` **no hereda** de `IEntityDbContext` — garantiza que no se puede persistir ningún cambio a través del contrato de solo lectura.
+- El `ReadOnlyService` **reutiliza el mismo Mapper** que el `Service` de escritura para mantener proyecciones consistentes.
+- Los Queries genéricos (`GetByIdQuery`, `GetAllQuery`) son despachados por MediatR usando el `IApplicationReadOnlyService<ENT, DTO>`.
+
+### Artefactos por capa (Dominio e Infraestructura)
+
+| Capa | Archivo | Descripción |
+|---|---|---|
+| Domain/Ports | `I{Nombre}ReadOnlyRepository.cs` | Puerto de lectura del dominio |
+| Infraestructure | `{Nombre}ReadOnlyRepository.cs` | Implementación: hereda `BaseReadOnlyRepository` |
+
+> Los artefactos de Application (servicio e interfaz) están en la sección **Application Services — Query Side**.
+
+### C# ejemplo — Interfaz de repositorio de solo lectura (Domain/Ports)
+```csharp
+using Domain.Ports.Repository.Base;
+using Domain.BoundedContext.{BoundedContext};
+
+namespace Domain.Ports;
+
+public interface I{Nombre}ReadOnlyRepository : IBaseReadOnlyRepository<{Nombre}Agg>
+{
+}
+```
+
+### C# ejemplo — Repositorio de solo lectura (Infraestructure)
+```csharp
+using Domain.Ports;
+using Domain.BoundedContext.{BoundedContext};
+using Infraestructure.Repository.Shared;
+
+namespace Infraestructure.Repository.{BoundedContext};
+
+public class {Nombre}ReadOnlyRepository
+    : BaseReadOnlyRepository<{Nombre}Agg>, I{Nombre}ReadOnlyRepository
+{
+    public {Nombre}ReadOnlyRepository(IEntityReadOnlyDbContext readOnlyContext)
+        : base(readOnlyContext)
+    {
+    }
+}
+```
+
+### Registro en DI — Infrastructure (`DependencyInjection.cs`)
+```csharp
+services.AddScoped<I{Nombre}ReadOnlyRepository, {Nombre}ReadOnlyRepository>();
+```
+Y el `EntityReadOnlyDbContext` ya está registrado una sola vez en la infraestructura — no se repite por agregado.
 
 ---
 

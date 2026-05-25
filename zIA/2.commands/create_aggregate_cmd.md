@@ -103,20 +103,24 @@ Archivos que se crearán:
   ✅ Domain/BoundedContext/{BC}/Aggregates/{VO}ValueObject.cs  (por cada VO)
   ✅ Domain/BoundedContext/{BC}/Events/DomainEvents.cs
   ✅ Domain/Ports/Repository/I{Nombre}Repository.cs
+  ✅ Domain/Ports/Repository/I{Nombre}ReadOnlyRepository.cs
   ✅ Application/{Nombre}/Dtos/{Nombre}Dto.cs
+  ✅ Application/{Nombre}/Dtos/{VO}Dto.cs                       (por cada VO con OwnsMany — archivo separado)
   ✅ Application/{Nombre}/Service/I{Nombre}Service.cs
   ✅ Application/{Nombre}/Service/{Nombre}Service.cs
+  ✅ Application/{Nombre}/Service/I{Nombre}ReadOnlyService.cs
+  ✅ Application/{Nombre}/Service/{Nombre}ReadOnlyService.cs
   ✅ Application/{Nombre}/Mapper/{Nombre}Mapper.cs
   ✅ Application/{Nombre}/Validator/{Nombre}Validator.cs
   ✅ Application/{Nombre}/Cqrs/Commands/Create{Nombre}Command.cs
   ✅ Infraestructure/Entity/Context/EntityConfigurations/{Nombre}Config.cs
   ✅ Infraestructure/Entity/Repository/{BC}/{Nombre}Repository.cs
+  ✅ Infraestructure/Entity/Repository/{BC}/{Nombre}ReadOnlyRepository.cs
 
 Archivos a MODIFICAR:
-  ⚠️  Infraestructure/Entity/Context/EntityDbContext.cs         (ApplyConfiguration)
-  ⚠️  Infraestructure/Entity/Context/EntityDbContext.dbsets.cs  (DbSet<>)
-  ⚠️  Infraestructure/Entity/DependencyInjection.cs             (AddScoped repositorio)
-  ⚠️  Application/DependencyInyection.cs                        (RegisterMediatrAbstractService + Validator)
+  ⚠️  Infraestructure/Entity/Context/EntityDBSets.cs            (DbSet<> + ApplyConfiguration)
+  ⚠️  Infraestructure/Entity/DependencyInjection.cs             (AddScoped repositorio escritura + lectura)
+  ⚠️  Application/DependencyInyection.cs                        (RegisterMediatrAbstractService + ReadOnly + Validator)
 
 ¿Confirmas la generación? (sí/no)
 ```
@@ -505,7 +509,7 @@ public class {Nombre}Config : IEntityTypeConfiguration<{Nombre}Agg>
 
 ---
 
-### 3.12 — Repository Implementation
+### 3.12 — Repository Implementation (Command side)
 **Ruta:** `Infraestructure/Entity/Repository/{BC}/{Nombre}Repository.cs`
 
 ```csharp
@@ -526,7 +530,92 @@ public class {Nombre}Repository : BaseRepositiry<{Nombre}Agg>, I{Nombre}Reposito
 
 ---
 
-### 3.13 — Controller
+### 3.13 — ReadOnly Repository Port (Domain — Query side)
+**Ruta:** `Domain/Ports/Repository/I{Nombre}ReadOnlyRepository.cs`
+
+```csharp
+using Domain.Ports.Repository.Base;
+using Domain.BoundedContext.{BoundedContext};
+
+namespace Domain.Ports;
+
+public interface I{Nombre}ReadOnlyRepository : IBaseReadOnlyRepository<{Nombre}Agg>
+{
+}
+```
+
+---
+
+### 3.14 — ReadOnly Service Interface (Application — Query side)
+**Ruta:** `Application/{Nombre}/Service/I{Nombre}ReadOnlyService.cs`
+
+```csharp
+using Application.Base;
+using Application.Dto;
+using Domain.BoundedContext.{BoundedContext};
+
+namespace Application.Service;
+
+public interface I{Nombre}ReadOnlyService
+    : IApplicationReadOnlyService<{Nombre}Agg, {Nombre}Dto>
+{
+}
+```
+
+---
+
+### 3.15 — ReadOnly Service Implementation (Application — Query side)
+**Ruta:** `Application/{Nombre}/Service/{Nombre}ReadOnlyService.cs`
+
+```csharp
+using Application.Base;
+using Application.Dto;
+using Domain.BoundedContext.{BoundedContext};
+using Domain.Ports;
+
+namespace Application.Service;
+
+public class {Nombre}ReadOnlyService
+    : ApplicationReadOnlyService<{Nombre}Agg, {Nombre}Dto>,
+      I{Nombre}ReadOnlyService
+{
+    public {Nombre}ReadOnlyService(I{Nombre}ReadOnlyRepository repository)
+        : base(repository)
+    {
+        // Reutiliza el mismo mapper del Service de escritura
+        CreateMapperExpresion<{Nombre}Agg, {Nombre}Dto>(cnf =>
+        {
+            {Nombre}Mapper.Expresion(cnf);
+        });
+    }
+}
+```
+
+---
+
+### 3.16 — ReadOnly Repository Implementation (Infraestructure — Query side)
+**Ruta:** `Infraestructure/Entity/Repository/{BC}/{Nombre}ReadOnlyRepository.cs`
+
+```csharp
+using Domain.Ports;
+using Domain.BoundedContext.{BoundedContext};
+using Infraestructure.Repository.Shared;
+
+namespace Infraestructure.Repository.{BoundedContext};
+
+public class {Nombre}ReadOnlyRepository
+    : BaseReadOnlyRepository<{Nombre}Agg>, I{Nombre}ReadOnlyRepository
+{
+    public {Nombre}ReadOnlyRepository(IEntityReadOnlyDbContext readOnlyContext)
+        : base(readOnlyContext)
+    {
+    }
+}
+```
+
+---
+
+### 3.17 — Controller
 **Ruta:** `Api/Controllers/v1/{Nombre}Controller.cs`
 
 ```csharp
@@ -557,32 +646,42 @@ public class {Nombre}Controller
 
 Muestra los **diffs exactos** que deben aplicarse a los archivos existentes:
 
-### 4.1 — `Infraestructure/Entity/Context/EntityDbContext.cs`
+### 4.1 — `Infraestructure/Entity/Context/EntityDBSets.cs`
+⚠️ Este archivo centraliza **DbSets y OnModelCreating** — NO modificar `EntityDbContext.cs` ni `EntityReadOnlyDbContext.cs` directamente.
+
 Agregar en `OnModelCreating`:
 ```csharp
 modelBuilder.ApplyConfiguration(new {Nombre}Config());
 ```
-
-### 4.2 — `Infraestructure/Entity/Context/EntityDbContext.dbsets.cs`
-Agregar:
+Agregar el DbSet:
 ```csharp
 public DbSet<{Nombre}Agg> {Nombre} { get; set; }
 ```
+Agregar el using en la cabecera:
+```csharp
+using Domain.BoundedContext.{BoundedContext};
+```
 
-### 4.3 — `Infraestructure/Entity/DependencyInjection.cs`
+### 4.2 — `Infraestructure/Entity/DependencyInjection.cs`
 Agregar en el método `AddDependencyInjectionInfrastructureEf`:
 ```csharp
+// Command side
 services.AddScoped<I{Nombre}Repository, {Nombre}Repository>();
+// Query side
+services.AddScoped<I{Nombre}ReadOnlyRepository, {Nombre}ReadOnlyRepository>();
 ```
 Agregar el using correspondiente:
 ```csharp
 using Infraestructure.Repository.{BoundedContext};
 ```
 
-### 4.4 — `Application/DependencyInyection.cs`
+### 4.3 — `Application/DependencyInyection.cs`
 Agregar en `AddDependencyInjectionApplication`:
 ```csharp
+// Command side
 services.RegisterMediatrAbstractService<{Nombre}Service, {Nombre}Dto, {Nombre}Agg, I{Nombre}Service>();
+// Query side
+services.RegisterMediatrAbstractReadOnlyService<{Nombre}ReadOnlyService, {Nombre}Dto, {Nombre}Agg, I{Nombre}ReadOnlyService>();
 ```
 Agregar en `RegisterValidators`:
 ```csharp
@@ -609,16 +708,32 @@ dotnet ef database update --project Infraestructure --startup-project Api
 
 Antes de entregar el código generado, el agente debe verificar internamente:
 
+**Dominio:**
 - [ ] El agregado hereda de `AggregateRoot` (no de `Entity` directamente)
 - [ ] El constructor vacío existe para EF (sin lógica de negocio)
 - [ ] `ExcecuteDomainInvariants()` se llama al final del constructor con parámetros
 - [ ] Todas las propiedades del dominio tienen `get; private set;` (ningún setter público)
 - [ ] Todos los VOs son `record : ValueObject` con Guard Clauses en el constructor
+- [ ] `I{Nombre}Repository` e `I{Nombre}ReadOnlyRepository` están en `Domain/Ports/Repository/`
+
+**Infraestructura:**
 - [ ] El Fluent API mapea `Status`, `CreatedAt`, `UpdateAt` (campos de `Entity`)
-- [ ] Cada VO tiene `ToTable`, `WithOwner().HasForeignKey(...)`, `HasKey("Id")` 
-- [ ] El repositorio implementa `BaseRepositiry<TAgg>` e `I{Nombre}Repository`
-- [ ] El contrato `I{Nombre}Repository` está en `Domain/Ports/Repository/`
+- [ ] Cada VO tiene `ToTable`, `WithOwner().HasForeignKey(...)`, `HasKey("Id")`
+- [ ] El DbSet y `ApplyConfiguration` se agregan en `EntityDBSets.cs` (NO en EntityDbContext.cs)
+- [ ] El repositorio de escritura implementa `BaseRepositiry<TAgg>` e `I{Nombre}Repository`
+- [ ] El repositorio de lectura implementa `BaseReadOnlyRepository<TAgg>` e `I{Nombre}ReadOnlyRepository`
+- [ ] Ambos repositorios registrados en `DependencyInjection.cs` de Infraestructura
+
+**Application:**
+- [ ] El DTO de VO con OwnsMany está en **archivo separado** (`{VO}Dto.cs`)
 - [ ] El Mapper usa `ConstructUsing` para DTO → Agg (respetando el constructor de negocio)
+- [ ] El Mapper usa `ForMember` + `Select()` inline para Agg → DTO (incluyendo colecciones OwnsMany)
+- [ ] `{Nombre}ReadOnlyService` reutiliza `{Nombre}Mapper.Expresion(cnf)` (mismo mapper)
+- [ ] `RegisterMediatrAbstractService` Y `RegisterMediatrAbstractReadOnlyService` registrados en Application DI
+- [ ] Validator registrado en `RegisterValidators`
+
+**API:**
 - [ ] El Controller hereda de `BaseController<{Nombre}Agg, {Nombre}Dto>`
-- [ ] Los 4 archivos existentes tienen sus modificaciones indicadas con diff claro
+
+**Migración:**
 - [ ] Se indica el comando de migración EF al usuario
