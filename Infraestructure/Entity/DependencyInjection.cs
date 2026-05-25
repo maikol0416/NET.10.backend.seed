@@ -35,9 +35,13 @@ public static class DependencyInjection
             return context;
         });
 
-        //Repository
-        services.AddScoped<IPhysicalStructureRepository,PhysicalStructureRepository>();
+        //Repository — Command side (escritura)
+        services.AddScoped<IPhysicalStructureRepository, PhysicalStructureRepository>();
         services.AddScoped<IDocumentRepository, DocumentRepository>();
+
+        //Repository — Query side (solo lectura)
+        services.AddScoped<IPhysicalStructureReadOnlyRepository, PhysicalStructureReadOnlyRepository>();
+        services.AddScoped<IDocumentReadOnlyRepository, DocumentReadOnlyRepository>();
 
         return services;
     }

@@ -27,6 +27,10 @@ public static class DependencyInyection
 
         services.RegisterMediatrAbstractService<PhysicalStructureService, PhysicalStructureDto, PhysicalStructureAgg, IPhysicalStructureService>();
         services.RegisterMediatrAbstractService<DocumentService, DocumentDto, DocumentAgg, IDocumentService>();
+
+        // Query side — servicios de solo lectura con EntityReadOnlyDbContext (NoTracking)
+        services.RegisterMediatrAbstractReadOnlyService<PhysicalStructureReadOnlyService, PhysicalStructureDto, PhysicalStructureAgg, IPhysicalStructureReadOnlyService>();
+        services.RegisterMediatrAbstractReadOnlyService<DocumentReadOnlyService, DocumentDto, DocumentAgg, IDocumentReadOnlyService>();
         return services;
     }
 
