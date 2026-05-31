@@ -1,9 +1,9 @@
-# Skill: Crear Nuevo Agregado DDD
+# Comando: Crear Nuevo Agregado DDD
 
 ## Rol del Agente
 Eres un arquitecto de software especializado en C# / .NET 10 y Domain-Driven Design. Tu misión es generar **todos los archivos necesarios** para incorporar un nuevo Agregado al proyecto `NET.10.backend.seed`, respetando estrictamente los patrones, namespaces, convenciones y estructura de capas ya existentes en el repositorio.
 
-> **Referencia obligatoria:** Antes de generar cualquier código, verifica la estructura real del proyecto y los ejemplos de implementación en `./zIA/skills/architecture_ddd_dotnet_skill.md` y las reglas de revisión en `./zIA/skills/instrucciones_code_review_ddd.md`.
+> **Referencia obligatoria:** Antes de generar cualquier código, consulta los templates y reglas en `./zIA/3.skills/architecture_ddd_dotnet_skill.md` y las reglas de revisión en `./zIA/3.skills/instrucciones_code_review_ddd_skill.md`.
 
 ---
 
@@ -106,16 +106,17 @@ Archivos que se crearán:
   ✅ Domain/Ports/Repository/I{Nombre}ReadOnlyRepository.cs
   ✅ Application/{Nombre}/Dtos/{Nombre}Dto.cs
   ✅ Application/{Nombre}/Dtos/{VO}Dto.cs                       (por cada VO con OwnsMany — archivo separado)
+  ✅ Application/{Nombre}/Mapper/{Nombre}Mapper.cs
   ✅ Application/{Nombre}/Service/I{Nombre}Service.cs
   ✅ Application/{Nombre}/Service/{Nombre}Service.cs
   ✅ Application/{Nombre}/Service/I{Nombre}ReadOnlyService.cs
   ✅ Application/{Nombre}/Service/{Nombre}ReadOnlyService.cs
-  ✅ Application/{Nombre}/Mapper/{Nombre}Mapper.cs
   ✅ Application/{Nombre}/Validator/{Nombre}Validator.cs
   ✅ Application/{Nombre}/Cqrs/Commands/Create{Nombre}Command.cs
   ✅ Infraestructure/Entity/Context/EntityConfigurations/{Nombre}Config.cs
   ✅ Infraestructure/Entity/Repository/{BC}/{Nombre}Repository.cs
   ✅ Infraestructure/Entity/Repository/{BC}/{Nombre}ReadOnlyRepository.cs
+  ✅ Api/Controllers/v1/{Nombre}Controller.cs
 
 Archivos a MODIFICAR:
   ⚠️  Infraestructure/Entity/Context/EntityDBSets.cs            (DbSet<> + ApplyConfiguration)
@@ -131,562 +132,54 @@ Espera confirmación explícita del usuario antes de continuar.
 
 ## PASO 3 — Generación de Archivos
 
-Genera **todos** los archivos en el orden indicado. Por cada archivo muestra la ruta completa y el código completo.
-
-### Convenciones obligatorias:
-- Nombre del agregado: `{Nombre}Agg` (ej. `ResidentialUnitAgg`)
-- Value Objects: `{Nombre}ValueObject` (ej. `LocationValueObject`)
-- Namespace Domain BC: `Domain.BoundedContext.{BoundedContext}`
-- Namespace Application: `Application.{Nombre}` / `Application.Dto` / `Application.Service` / `Application.Validator`
-- Namespace Infraestructure: `Infraestructure.Repository.{BoundedContext}` / `Infraestructure.Entity`
-- Los agregados siempre deben heredar de `AggregateRoot` (que ya hereda `Entity`)
-- Value Objects siempre `record` heredando de `ValueObject`
-- DomainException para todas las validaciones
-- `ExcecuteDomainInvariants()` siempre llamado al final del constructor con parámetros
-
----
-
-### 3.1 — Aggregate Root
-**Ruta:** `Domain/BoundedContext/{BC}/Aggregates/{Nombre}Agg.cs`
-
-```csharp
-using Domain.DomainShared;
-
-namespace Domain.BoundedContext.{BoundedContext};
-
-public class {Nombre}Agg : AggregateRoot
-{
-    // Constructor para ORM (Entity Framework)
-    public {Nombre}Agg() { }
-
-    // Constructor de negocio
-    public {Nombre}Agg(
-        {parametros_campos_propios},
-        {parametros_value_objects}
-        ) : base()
-    {
-        // Asignar campos propios
-        {Campo} = {parametro};
-        // Asignar value objects
-        {VO} = {parametroVO};
-
-        ExcecuteDomainInvariants();
-    }
-
-    // Campos propios (get; private set;)
-    public {Tipo} {Campo} { get; private set; }
-
-    // Value Objects
-    public {VO}ValueObject {VO} { get; private set; }
-    public List<{VOMany}ValueObject> {VOs} { get; private set; }
-
-    protected override void ExcecuteDomainInvariants()
-    {
-        // Reglas de invarianza definidas por el usuario
-        if (string.IsNullOrWhiteSpace({Campo}))
-            throw new DomainException("{Mensaje}");
-
-        if ({Campo}.Length > {max})
-            throw new DomainException("{Mensaje}");
-
-        if ({NumericCampo} <= 0)
-            throw new DomainException("{Mensaje}");
-
-        if ({VO} == null)
-            throw new DomainException("{Mensaje}");
-    }
-}
-```
-
----
-
-### 3.2 — Value Object(s)
-**Ruta:** `Domain/BoundedContext/{BC}/Aggregates/{VO}ValueObject.cs`  
-_(Un archivo por cada Value Object declarado)_
-
-```csharp
-using Domain.DomainShared;
-
-namespace Domain.BoundedContext.{BoundedContext};
-
-public record {VO}ValueObject : ValueObject
-{
-    public {VO}ValueObject(
-        {parametros_campos_vo}
-        )
-    {
-        // Guard Clauses para cada campo requerido
-        if (string.IsNullOrEmpty({campo}))
-            throw new DomainException("{Campo} es obligatorio.");
-
-        {Campo} = {campo};
-        // ... resto de campos
-    }
-
-    public {Tipo} {Campo} { get; private set; }
-    // ... resto de propiedades
-}
-```
-
----
-
-### 3.3 — Domain Events
-**Ruta:** `Domain/BoundedContext/{BC}/Events/DomainEvents.cs`
-
-```csharp
-using Domain.DomainShared;
-using Domain.Ports.Events.Properties;
-
-namespace Domain.{BoundedContext}.Events;
-
-// Evento: {Nombre} creado (registro pasado)
-public record {Nombre}CreatedDomainEvent(Guid {Nombre}Id, string {CampoRepresentativo}) 
-    : DomainEvent, IDomainEvent
-{
-}
-
-// Agrega más eventos según las acciones de negocio relevantes
-// public record {Nombre}UpdatedDomainEvent(Guid {Nombre}Id) : DomainEvent, IDomainEvent { }
-```
-
----
-
-### 3.4 — Interfaz de Repositorio (Puerto del Dominio)
-**Ruta:** `Domain/Ports/Repository/I{Nombre}Repository.cs`
-
-```csharp
-using Domain.Ports.Repository.Base;
-using Domain.BoundedContext.{BoundedContext};
-
-namespace Domain.Ports;
-
-public interface I{Nombre}Repository : IBaseRepository<{Nombre}Agg>
-{
-}
-```
-
----
-
-### 3.5 — DTO
-**Ruta:** `Application/{Nombre}/Dtos/{Nombre}Dto.cs`
-
-```csharp
-namespace Application.Dto;
-
-public class {Nombre}Dto
-{
-    // Campos planos del agregado
-    public {Tipo} {Campo} { get; set; }
-
-    // Campos aplanados de los Value Objects (sin anidar)
-    // OwnsOne: aplana los campos del VO directamente en el DTO
-    public {Tipo} {VoCampo} { get; set; }
-
-    // OwnsMany: lista separada o simplificada según necesidad
-}
-```
-
----
-
-### 3.6 — Interfaz del Application Service
-**Ruta:** `Application/{Nombre}/Service/I{Nombre}Service.cs`
-
-```csharp
-using Application.Base;
-using Application.Dto;
-using Domain.BoundedContext.{BoundedContext};
-
-namespace Application.Service;
-
-public interface I{Nombre}Service : IApplicationService<{Nombre}Agg, {Nombre}Dto>
-{
-}
-```
-
----
-
-### 3.7 — Mapper (AutoMapper estático)
-**Ruta:** `Application/{Nombre}/Mapper/{Nombre}Mapper.cs`
-
-```csharp
-using Application.Dto;
-using AutoMapper;
-using Domain.BoundedContext.{BoundedContext};
-
-namespace Application.Service;
-
-public static class {Nombre}Mapper
-{
-    public static void Expresion(IMapperConfigurationExpression cnf)
-    {
-        // DTO → Aggregate (usa el constructor de negocio del agregado)
-        cnf.CreateMap<{Nombre}Dto, {Nombre}Agg>()
-            .ConstructUsing(src => new {Nombre}Agg(
-                src.{Campo},
-                // Value Objects construidos dentro del mapper
-                new {VO}ValueObject(
-                    src.{VoCampo},
-                    src.{VoCampo2}
-                )
-                // OwnsMany: new List<{VOMany}ValueObject> { ... }
-            ));
-
-        // Aggregate → DTO (proyección plana)
-        cnf.CreateMap<{Nombre}Agg, {Nombre}Dto>()
-            .ForMember(dest => dest.{Campo}, opt => opt.MapFrom(src => src.{Campo}))
-            // Value Object owned:
-            .ForMember(dest => dest.{VoCampo}, opt => opt.MapFrom(src => src.{VO}.{VoCampo}));
-    }
-}
-```
-
----
-
-### 3.8 — Application Service
-**Ruta:** `Application/{Nombre}/Service/{Nombre}Service.cs`
-
-```csharp
-using Application.Base;
-using Application.Dto;
-using Domain.BoundedContext.{BoundedContext};
-using Domain.Ports;
-
-namespace Application.Service;
-
-public class {Nombre}Service 
-    : ApplicationService<{Nombre}Agg, {Nombre}Dto>, I{Nombre}Service
-{
-    public {Nombre}Service(I{Nombre}Repository repository) : base(repository)
-    {
-        CreateMapperExpresion<{Nombre}Agg, {Nombre}Dto>(cnf =>
-        {
-            {Nombre}Mapper.Expresion(cnf);
-        });
-    }
-}
-```
-
----
-
-### 3.9 — Validator (FluentValidation)
-**Ruta:** `Application/{Nombre}/Validator/{Nombre}Validator.cs`
-
-```csharp
-using Application.Dto;
-using Domain.Ports;
-using FluentValidation;
-
-namespace Application.Validator;
-
-public class {Nombre}Validator : AbstractValidator<{Nombre}Dto>
-{
-    private readonly I{Nombre}Repository _{nombre}Repository;
-
-    public {Nombre}Validator(I{Nombre}Repository {nombre}Repository)
-    {
-        _{nombre}Repository = {nombre}Repository;
-
-        // Regla de ejemplo: campo requerido
-        RuleFor(x => x.{Campo})
-            .NotEmpty()
-            .WithErrorCode("{Campo}Empty")
-            .WithMessage("El campo {Campo} es obligatorio.")
-            .WithName(nameof({Nombre}Dto.{Campo}));
-
-        // Agrega más reglas según los campos del DTO
-    }
-}
-```
-
----
-
-### 3.10 — CQRS Command
-**Ruta:** `Application/{Nombre}/Cqrs/Commands/Create{Nombre}Command.cs`
-
-```csharp
-using Application.Dto;
-using Domain.BoundedContext.{BoundedContext};
-using Domain.Ports;
-using MediatR;
-
-namespace Application.{Nombre}.Commands;
-
-public record Create{Nombre}Command({Nombre}Dto {Nombre}Dto) : IRequest<Guid>;
-
-public class Create{Nombre}CommandHandler
-    : IRequestHandler<Create{Nombre}Command, Guid>
-{
-    private readonly I{Nombre}Repository _repository;
-
-    public Create{Nombre}CommandHandler(I{Nombre}Repository repository)
-    {
-        _repository = repository;
-    }
-
-    public async Task<Guid> Handle(
-        Create{Nombre}Command request,
-        CancellationToken cancellationToken)
-    {
-        // Construir el agregado desde el DTO usando el constructor de negocio
-        var agg = new {Nombre}Agg(
-            request.{Nombre}Dto.{Campo},
-            new {VO}ValueObject(
-                request.{Nombre}Dto.{VoCampo}
-            )
-        );
-
-        await _repository.CreateAsync(agg);
-        return agg.Id;
-    }
-}
-```
-
----
-
-### 3.11 — Fluent API Configuration
-**Ruta:** `Infraestructure/Entity/Context/EntityConfigurations/{Nombre}Config.cs`
-
-```csharp
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Domain.BoundedContext.{BoundedContext};
-
-namespace Infraestructure.Entity;
-
-public class {Nombre}Config : IEntityTypeConfiguration<{Nombre}Agg>
-{
-    public void Configure(EntityTypeBuilder<{Nombre}Agg> builder)
-    {
-        builder.ToTable("{NombreTabla}");
-        builder.HasKey(p => p.Id);
-
-        // ✅ Campos heredados de Entity (SIEMPRE incluir)
-        builder.Property(p => p.Status)
-            .IsRequired()
-            .HasMaxLength(1);
-
-        builder.Property(p => p.CreatedAt)
-            .IsRequired();
-
-        builder.Property(p => p.UpdateAt)
-            .IsRequired(false);
-
-        // Campos propios del agregado
-        builder.Property(p => p.{Campo})
-            .IsRequired()          // si el campo es requerido
-            .HasMaxLength({max});   // si es string
-
-        // OwnsOne: Value Object de 1 a 1
-        builder.OwnsOne(p => p.{VO}, voBuilder =>
-        {
-            voBuilder.ToTable("{NombreTablaVO}");
-            voBuilder.WithOwner().HasForeignKey("{Nombre}Id");
-            voBuilder.Property<int>("Id");
-            voBuilder.HasKey("Id");
-
-            voBuilder.Property(v => v.{VoCampo})
-                .HasColumnName("{VoCampo}")
-                .IsRequired()
-                .HasMaxLength({max});
-        });
-
-        // OwnsMany: Value Object de 1 a muchos
-        builder.OwnsMany(p => p.{VOs}, voBuilder =>
-        {
-            voBuilder.ToTable("{NombreTablaVOMany}");
-            voBuilder.WithOwner().HasForeignKey("{Nombre}Id");
-            voBuilder.Property<int>("Id");
-            voBuilder.HasKey("Id");
-
-            voBuilder.Property(v => v.{VoCampo})
-                .HasColumnName("{VoCampo}")
-                .IsRequired()
-                .HasMaxLength({max});
-        });
-    }
-}
-```
-
----
-
-### 3.12 — Repository Implementation (Command side)
-**Ruta:** `Infraestructure/Entity/Repository/{BC}/{Nombre}Repository.cs`
-
-```csharp
-using Domain.Ports;
-using Domain.BoundedContext.{BoundedContext};
-using Infraestructure.Repository.Shared;
-
-namespace Infraestructure.Repository.{BoundedContext};
-
-public class {Nombre}Repository : BaseRepositiry<{Nombre}Agg>, I{Nombre}Repository
-{
-    public {Nombre}Repository(IEntityDbContext entityDbContext)
-        : base(entityDbContext)
-    {
-    }
-}
-```
-
----
-
-### 3.13 — ReadOnly Repository Port (Domain — Query side)
-**Ruta:** `Domain/Ports/Repository/I{Nombre}ReadOnlyRepository.cs`
-
-```csharp
-using Domain.Ports.Repository.Base;
-using Domain.BoundedContext.{BoundedContext};
-
-namespace Domain.Ports;
-
-public interface I{Nombre}ReadOnlyRepository : IBaseReadOnlyRepository<{Nombre}Agg>
-{
-}
-```
-
----
-
-### 3.14 — ReadOnly Service Interface (Application — Query side)
-**Ruta:** `Application/{Nombre}/Service/I{Nombre}ReadOnlyService.cs`
-
-```csharp
-using Application.Base;
-using Application.Dto;
-using Domain.BoundedContext.{BoundedContext};
-
-namespace Application.Service;
-
-public interface I{Nombre}ReadOnlyService
-    : IApplicationReadOnlyService<{Nombre}Agg, {Nombre}Dto>
-{
-}
-```
-
----
-
-### 3.15 — ReadOnly Service Implementation (Application — Query side)
-**Ruta:** `Application/{Nombre}/Service/{Nombre}ReadOnlyService.cs`
-
-```csharp
-using Application.Base;
-using Application.Dto;
-using Domain.BoundedContext.{BoundedContext};
-using Domain.Ports;
-
-namespace Application.Service;
-
-public class {Nombre}ReadOnlyService
-    : ApplicationReadOnlyService<{Nombre}Agg, {Nombre}Dto>,
-      I{Nombre}ReadOnlyService
-{
-    public {Nombre}ReadOnlyService(I{Nombre}ReadOnlyRepository repository)
-        : base(repository)
-    {
-        // Reutiliza el mismo mapper del Service de escritura
-        CreateMapperExpresion<{Nombre}Agg, {Nombre}Dto>(cnf =>
-        {
-            {Nombre}Mapper.Expresion(cnf);
-        });
-    }
-}
-```
-
----
-
-### 3.16 — ReadOnly Repository Implementation (Infraestructure — Query side)
-**Ruta:** `Infraestructure/Entity/Repository/{BC}/{Nombre}ReadOnlyRepository.cs`
-
-```csharp
-using Domain.Ports;
-using Domain.BoundedContext.{BoundedContext};
-using Infraestructure.Repository.Shared;
-
-namespace Infraestructure.Repository.{BoundedContext};
-
-public class {Nombre}ReadOnlyRepository
-    : BaseReadOnlyRepository<{Nombre}Agg>, I{Nombre}ReadOnlyRepository
-{
-    public {Nombre}ReadOnlyRepository(IEntityReadOnlyDbContext readOnlyContext)
-        : base(readOnlyContext)
-    {
-    }
-}
-```
-
----
-
-### 3.17 — Controller
-**Ruta:** `Api/Controllers/v1/{Nombre}Controller.cs`
-
-```csharp
-using Microsoft.AspNetCore.Mvc;
-using MediatR;
-using Application.Dto;
-using Domain.BoundedContext.{BoundedContext};
-using FluentValidation;
-
-namespace Api.Controllers;
-
-[Route("api/[controller]")]
-public class {Nombre}Controller 
-    : BaseController<{Nombre}Agg, {Nombre}Dto>
-{
-    public {Nombre}Controller(
-        IValidator<{Nombre}Dto> validator, 
-        IMediator mediator)
-        : base(validator, mediator)
-    {
-    }
-}
-```
+Genera **todos** los archivos en el orden indicado abajo. Usa los **templates del skill** (`./zIA/3.skills/architecture_ddd_dotnet_skill.md`) para cada artefacto. Por cada archivo muestra la ruta completa y el código completo.
+
+### Orden de generación:
+
+| # | Capa | Archivo a crear | Sección del skill |
+|---|---|---|---|
+| 1 | Domain | `Domain/BoundedContext/{BC}/Aggregates/{Nombre}Agg.cs` | Aggregate Roots |
+| 2 | Domain | `Domain/BoundedContext/{BC}/Aggregates/{VO}ValueObject.cs` _(por cada VO)_ | Value Objects |
+| 3 | Domain | `Domain/BoundedContext/{BC}/Events/DomainEvents.cs` | Domain Events |
+| 4 | Domain/Ports | `Domain/Ports/Repository/I{Nombre}Repository.cs` | Repositorios de Escritura |
+| 5 | Domain/Ports | `Domain/Ports/Repository/I{Nombre}ReadOnlyRepository.cs` | Repositorios de Solo Lectura |
+| 6 | Application | `Application/{Nombre}/Dtos/{Nombre}Dto.cs` | DTOs |
+| 7 | Application | `Application/{Nombre}/Dtos/{VO}Dto.cs` _(por cada VO OwnsMany)_ | DTOs |
+| 8 | Application | `Application/{Nombre}/Mapper/{Nombre}Mapper.cs` | Mapper (AutoMapper) |
+| 9 | Application | `Application/{Nombre}/Service/I{Nombre}Service.cs` | Application Services — Command Side |
+| 10 | Application | `Application/{Nombre}/Service/{Nombre}Service.cs` | Application Services — Command Side |
+| 11 | Application | `Application/{Nombre}/Service/I{Nombre}ReadOnlyService.cs` | Application Services — Query Side |
+| 12 | Application | `Application/{Nombre}/Service/{Nombre}ReadOnlyService.cs` | Application Services — Query Side |
+| 13 | Application | `Application/{Nombre}/Validator/{Nombre}Validator.cs` | Validator (FluentValidation) |
+| 14 | Application | `Application/{Nombre}/Cqrs/Commands/Create{Nombre}Command.cs` | CQRS Commands (MediatR) |
+| 15 | Infraestructure | `Infraestructure/Entity/Context/EntityConfigurations/{Nombre}Config.cs` | Entity Configuration (Fluent API) |
+| 16 | Infraestructure | `Infraestructure/Entity/Repository/{BC}/{Nombre}Repository.cs` | Repositorios de Escritura |
+| 17 | Infraestructure | `Infraestructure/Entity/Repository/{BC}/{Nombre}ReadOnlyRepository.cs` | Repositorios de Solo Lectura |
+| 18 | Api | `Api/Controllers/v1/{Nombre}Controller.cs` | Controllers |
 
 ---
 
 ## PASO 4 — Modificaciones a Archivos Existentes
 
-Muestra los **diffs exactos** que deben aplicarse a los archivos existentes:
+Muestra los **diffs exactos** que deben aplicarse a los archivos existentes. Consulta la sección correspondiente del skill para el formato correcto de cada registro.
 
 ### 4.1 — `Infraestructure/Entity/Context/EntityDBSets.cs`
-⚠️ Este archivo centraliza **DbSets y OnModelCreating** — NO modificar `EntityDbContext.cs` ni `EntityReadOnlyDbContext.cs` directamente.
-
-Agregar en `OnModelCreating`:
-```csharp
-modelBuilder.ApplyConfiguration(new {Nombre}Config());
-```
-Agregar el DbSet:
-```csharp
-public DbSet<{Nombre}Agg> {Nombre} { get; set; }
-```
-Agregar el using en la cabecera:
-```csharp
-using Domain.BoundedContext.{BoundedContext};
-```
+Consultar sección **Entity Configuration (Fluent API) → Registro en EntityDBSets.cs** del skill:
+- Agregar `using Domain.BoundedContext.{BoundedContext};`
+- Agregar `DbSet<{Nombre}Agg>`
+- Agregar `ApplyConfiguration(new {Nombre}Config())` en `OnModelCreating`
 
 ### 4.2 — `Infraestructure/Entity/DependencyInjection.cs`
-Agregar en el método `AddDependencyInjectionInfrastructureEf`:
-```csharp
-// Command side
-services.AddScoped<I{Nombre}Repository, {Nombre}Repository>();
-// Query side
-services.AddScoped<I{Nombre}ReadOnlyRepository, {Nombre}ReadOnlyRepository>();
-```
-Agregar el using correspondiente:
-```csharp
-using Infraestructure.Repository.{BoundedContext};
-```
+Consultar secciones **Repositorios de Escritura → Registro DI** y **Repositorios de Solo Lectura → Registro DI** del skill:
+- Agregar `AddScoped<I{Nombre}Repository, {Nombre}Repository>()`
+- Agregar `AddScoped<I{Nombre}ReadOnlyRepository, {Nombre}ReadOnlyRepository>()`
+- Agregar `using Infraestructure.Repository.{BoundedContext};`
 
 ### 4.3 — `Application/DependencyInyection.cs`
-Agregar en `AddDependencyInjectionApplication`:
-```csharp
-// Command side
-services.RegisterMediatrAbstractService<{Nombre}Service, {Nombre}Dto, {Nombre}Agg, I{Nombre}Service>();
-// Query side
-services.RegisterMediatrAbstractReadOnlyService<{Nombre}ReadOnlyService, {Nombre}Dto, {Nombre}Agg, I{Nombre}ReadOnlyService>();
-```
-Agregar en `RegisterValidators`:
-```csharp
-services.AddScoped<IValidator<{Nombre}Dto>, {Nombre}Validator>();
-```
+Consultar secciones **Application Services Command → Registro DI**, **Application Services Query → Registro DI** y **Validator → Registro DI** del skill:
+- Agregar `RegisterMediatrAbstractService<{Nombre}Service, {Nombre}Dto, {Nombre}Agg, I{Nombre}Service>()`
+- Agregar `RegisterMediatrAbstractReadOnlyService<{Nombre}ReadOnlyService, {Nombre}Dto, {Nombre}Agg, I{Nombre}ReadOnlyService>()`
+- Agregar `AddScoped<IValidator<{Nombre}Dto>, {Nombre}Validator>()`
 
 ---
 
@@ -704,7 +197,7 @@ dotnet ef database update --project Infraestructure --startup-project Api
 
 ---
 
-## Reglas de Calidad — Checklist Interno del Agente
+## Checklist de Calidad — Verificación Interna del Agente
 
 Antes de entregar el código generado, el agente debe verificar internamente:
 
