@@ -65,7 +65,8 @@ public class AuthService : IAuthService
             Email: user.Email,
             FullName: user.FullName,
             Expiration: DateTime.UtcNow.AddMinutes(60),
-            Errors: null
+            Errors: null,
+            Roles: roles
         );
     }
 
@@ -147,7 +148,8 @@ public class AuthService : IAuthService
             Email: user.Email,
             FullName: user.FullName,
             Expiration: DateTime.UtcNow.AddMinutes(60),
-            Errors: null
+            Errors: null,
+            Roles: roles
         );
     }
 

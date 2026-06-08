@@ -10,4 +10,6 @@ public class AuthResponseDto
     public string Email { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public DateTime Expiration { get; set; }
+    public IList<string> Roles { get; set; } = new List<string>();
+    public string Role => Roles.FirstOrDefault() ?? string.Empty;
 }

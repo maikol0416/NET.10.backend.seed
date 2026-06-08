@@ -41,7 +41,8 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, AuthRespo
             Token = result.Token!,
             Email = result.Email!,
             FullName = result.FullName!,
-            Expiration = result.Expiration!.Value
+            Expiration = result.Expiration!.Value,
+            Roles = result.Roles?.ToList() ?? new List<string>()
         };
     }
 }

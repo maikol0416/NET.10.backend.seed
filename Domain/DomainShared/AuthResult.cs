@@ -11,5 +11,6 @@ public record AuthResult(
     string? Email,
     string? FullName,
     DateTime? Expiration,
-    IEnumerable<string>? Errors
+    IEnumerable<string>? Errors,
+    IEnumerable<string>? Roles = null
 );
