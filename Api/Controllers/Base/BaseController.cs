@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Api.Controllers;
 
-[AllowAnonymous]
+[Authorize]
 [ApiController]
 public abstract partial class BaseController<ENT, DTO> : ControllerBase
     where ENT : class, new()

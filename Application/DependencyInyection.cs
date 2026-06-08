@@ -1,4 +1,6 @@
 using System.Reflection;
+using Application.Auth.Dtos;
+using Application.Auth.Validator;
 using Application.Base;
 using Application.Dto;
 using Application.Service;
@@ -38,6 +40,11 @@ public static class DependencyInyection
     {
         services.AddScoped<IValidator<PhysicalStructureDto>, PhysicalStructureValidator>();
         services.AddScoped<IValidator<DocumentDto>, DocumentValidator>();
+
+        // Auth validators
+        services.AddScoped<IValidator<AuthLoginDto>, LoginValidator>();
+        services.AddScoped<IValidator<AuthRegisterDto>, RegisterValidator>();
+        services.AddScoped<IValidator<CreateRoleDto>, CreateRoleValidator>();
     }
 
     public static void RegisterMediatrAbstractService<Service, DTO, ENT, TImplementation>(this IServiceCollection services)
