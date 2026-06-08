@@ -64,6 +64,7 @@ public static class DependencyInyection
             // Query handlers — disponibles automáticamente en BaseController (getById / getAll)
             services.AddScoped(typeof(IRequestHandler<GetByIdQuery<ENT, DTO>, DTO?>), typeof(GetByIdHandler<ENT, DTO>));
             services.AddScoped(typeof(IRequestHandler<GetAllQuery<ENT, DTO>, IEnumerable<DTO>>), typeof(GetAllHandler<ENT, DTO>));
+            services.AddScoped(typeof(IRequestHandler<GetPaginatedQuery<ENT, DTO>, Domain.DomainShared.PaginatedList<DTO>>), typeof(GetPaginatedHandler<ENT, DTO>));
         }
 
     /// <summary>
@@ -82,5 +83,6 @@ public static class DependencyInyection
 
             services.AddScoped(typeof(IRequestHandler<GetByIdQuery<ENT, DTO>, DTO?>),  typeof(GetByIdHandler<ENT, DTO>));
             services.AddScoped(typeof(IRequestHandler<GetAllQuery<ENT, DTO>, IEnumerable<DTO>>), typeof(GetAllHandler<ENT, DTO>));
+            services.AddScoped(typeof(IRequestHandler<GetPaginatedQuery<ENT, DTO>, Domain.DomainShared.PaginatedList<DTO>>), typeof(GetPaginatedHandler<ENT, DTO>));
         }
 }

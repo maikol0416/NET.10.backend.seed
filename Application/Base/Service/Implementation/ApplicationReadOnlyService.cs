@@ -41,4 +41,12 @@ public abstract partial class ApplicationReadOnlyService<ENT, DTO>
     {
         return await ReadOnlyRepository.ExistsAsync(predicate);
     }
+
+    /// <inheritdoc/>
+    public virtual async Task<Domain.DomainShared.PaginatedList<DTO>> GetPaginatedAsync(int pageNumber, int pageSize)
+    {
+        var result = await ReadOnlyRepository.GetPaginatedAsync(pageNumber, pageSize);
+        var dtoList = MapLstToDTO(result.Items.ToList());
+        return new Domain.DomainShared.PaginatedList<DTO>(dtoList, result.TotalCount, result.PageNumber, result.PageSize);
+    }
 }

@@ -25,4 +25,7 @@ public interface IBaseReadOnlyRepository<T>
 
     /// <summary>Indica si existe al menos una entidad que satisface el predicado.</summary>
     Task<bool> ExistsAsync(Expression<Func<T, bool>> predicate);
+
+    /// <summary>Retorna un listado paginado de entidades.</summary>
+    Task<Domain.DomainShared.PaginatedList<T>> GetPaginatedAsync(int pageNumber, int pageSize);
 }

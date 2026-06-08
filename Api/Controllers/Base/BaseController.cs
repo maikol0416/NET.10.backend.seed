@@ -62,6 +62,12 @@ public abstract partial class BaseController<ENT, DTO> : ControllerBase
         return this.HandlerResponse( await _mediator.Send(new GetByIdQuery<ENT, DTO>(id)));
     }
 
+    [HttpGet("getPaginated")]
+    public async Task<IActionResult> GetPaginated([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+    {
+        return this.HandlerResponse(await _mediator.Send(new GetPaginatedQuery<ENT, DTO>(pageNumber, pageSize)));
+    }
+
     protected IActionResult HandlerResponse<DTO>(DTO dato)
     {
         return Ok(new ResponseApi<DTO> { Data = dato, Status = true, Message = "Operation carried out successfully." });

@@ -40,4 +40,12 @@ public class BaseReadOnlyRepository<T> : IBaseReadOnlyRepository<T>
     {
         return await Entity.AnyAsync(predicate);
     }
+
+    /// <inheritdoc/>
+    public virtual async Task<Domain.DomainShared.PaginatedList<T>> GetPaginatedAsync(int pageNumber, int pageSize)
+    {
+        var totalCount = await Entity.CountAsync();
+        var items = await Entity.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
+        return new Domain.DomainShared.PaginatedList<T>(items, totalCount, pageNumber, pageSize);
+    }
 }

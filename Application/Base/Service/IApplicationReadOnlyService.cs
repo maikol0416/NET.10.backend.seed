@@ -13,4 +13,6 @@ public interface IApplicationReadOnlyService<ENT, DTO>
     Task<IEnumerable<DTO>> FindAsync(Expression<Func<ENT, bool>> predicate);
 
     Task<bool> ExistsAsync(Expression<Func<ENT, bool>> predicate);
+
+    Task<Domain.DomainShared.PaginatedList<DTO>> GetPaginatedAsync(int pageNumber, int pageSize);
 }
