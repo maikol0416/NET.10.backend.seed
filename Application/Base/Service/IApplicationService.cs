@@ -6,7 +6,7 @@ public interface IApplicationService<ENT, DTO>
 {
     Task<DTO> CreateAsync(DTO dto);
     Task<bool> CreateListAsync(List<DTO> dtos);
-    Task<bool> DeleteEntity(int id);
+    Task<bool> DeleteEntity(Guid id);
     Task<DTO> UpdateAsync(DTO dto);
 }
 

@@ -18,7 +18,7 @@ public class BaseReadOnlyRepository<T> : IBaseReadOnlyRepository<T>
     }
 
     /// <inheritdoc/>
-    public virtual async Task<T?> GetByIdAsync(int id)
+    public virtual async Task<T?> GetByIdAsync(Guid id)
     {
         return await Entity.FindAsync(id);
     }

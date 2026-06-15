@@ -2,7 +2,7 @@ using MediatR;
 
 namespace Application.Base;
 
-public record GetByIdQuery<ENT, DTO>(int Id) : IRequest<DTO?>
+public record GetByIdQuery<ENT, DTO>(Guid Id) : IRequest<DTO?>
     where ENT : class, new()
     where DTO : class, new();
 

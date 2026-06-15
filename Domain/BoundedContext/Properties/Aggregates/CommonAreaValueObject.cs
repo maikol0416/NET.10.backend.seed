@@ -2,15 +2,15 @@ using Domain.DomainShared;
 
 namespace Domain.BoundedContext.Properties;
 
-public record CommonAreaValueObject: ValueObject
+public record CommonAreaValueObject : ValueObject
 {
-    public CommonAreaValueObject(string name,string description)
+    public CommonAreaValueObject(string name, string description)
     {
         if(string.IsNullOrEmpty(name))
-            throw new DomainException("Number cannot be null");
+            throw new DomainException("el nombre del área común es obligatorio.");
         
         if(string.IsNullOrEmpty(description))
-            throw new DomainException("Detail cannot be null");
+            throw new DomainException("la descripción del área común es obligatoria.");
         
         Name = name;
         Description = description;

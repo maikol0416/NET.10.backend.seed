@@ -45,7 +45,7 @@ public abstract partial class BaseController<ENT, DTO> : ControllerBase
     }
 
     [HttpDelete("delete")]
-    public async Task<IActionResult> Delete(int code)
+    public async Task<IActionResult> Delete(Guid code)
     {
         return this.HandlerResponse(await _mediator.Send(new DeleteCommand<ENT, DTO>(code)));
     }
@@ -57,7 +57,7 @@ public abstract partial class BaseController<ENT, DTO> : ControllerBase
     }
 
     [HttpGet("getById")]
-    public async Task<IActionResult> GetById(int id)
+    public async Task<IActionResult> GetById(Guid id)
     {
         return this.HandlerResponse( await _mediator.Send(new GetByIdQuery<ENT, DTO>(id)));
     }

@@ -6,7 +6,7 @@ public interface IApplicationReadOnlyService<ENT, DTO>
     where ENT : class, new()
     where DTO : class, new()
 {
-    Task<DTO?> GetByIdAsync(int id);
+    Task<DTO?> GetByIdAsync(Guid id);
 
     Task<IEnumerable<DTO>> GetAllAsync();
 

@@ -29,6 +29,19 @@ public class PhysicalStructureAgg : AggregateRoot
     public List<CommonAreaValueObject> CommonsAreas { get; private set; }
     public LocationValueObject Location { get; private set; }
 
+    /// <summary>
+    /// Actualiza los campos básicos de la estructura física.
+    /// Las áreas comunes (CommonAreas) son Value Objects inmutables y NO se actualizan aquí.
+    /// </summary>
+    public void UpdateBasicInfo(string name, string nit, int unitCount, LocationValueObject location)
+    {
+        Name = name;
+        Nit = nit;
+        UnitCount = unitCount;
+        Location = location;
+        ExcecuteDomainInvariants();
+    }
+
     protected override void ExcecuteDomainInvariants()
     {
         if (string.IsNullOrWhiteSpace(Name))

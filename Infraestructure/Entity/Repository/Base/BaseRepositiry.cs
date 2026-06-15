@@ -37,7 +37,7 @@ public class BaseRepositiry<T> : IBaseRepository<T>
         return ent;
     }
 
-    public async Task<bool> DeleteEntity(int id)
+    public async Task<bool> DeleteEntity(Guid id)
     {
         bool returnDelete = false;
 
@@ -52,7 +52,7 @@ public class BaseRepositiry<T> : IBaseRepository<T>
         return returnDelete;
     }
 
-    public virtual async Task<T?> GetById(int id)
+    public virtual async Task<T?> GetById(Guid id)
     {
         return await entity.FindAsync(id);
     }

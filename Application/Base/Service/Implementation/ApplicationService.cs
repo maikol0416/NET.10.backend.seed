@@ -31,7 +31,7 @@ public abstract partial class ApplicationService<ENT, DTO> : ApplicationServiceM
             return await Task.FromResult(true);
         }
       
-        public virtual async Task<bool> DeleteEntity(int id)
+        public virtual async Task<bool> DeleteEntity(Guid id)
         {
             return await RepositoryBase.DeleteEntity(id);
         }

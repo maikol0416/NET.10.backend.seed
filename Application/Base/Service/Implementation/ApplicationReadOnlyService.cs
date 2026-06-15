@@ -16,7 +16,7 @@ public abstract partial class ApplicationReadOnlyService<ENT, DTO>
     }
 
     /// <inheritdoc/>
-    public virtual async Task<DTO?> GetByIdAsync(int id)
+    public virtual async Task<DTO?> GetByIdAsync(Guid id)
     {
         var entity = await ReadOnlyRepository.GetByIdAsync(id);
         return entity is null ? null : MapToDTO(entity);

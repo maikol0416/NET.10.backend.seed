@@ -12,7 +12,7 @@ public interface IBaseReadOnlyRepository<T>
     where T : class, new()
 {
     /// <summary>Obtiene una entidad por su identificador. Retorna null si no existe.</summary>
-    Task<T?> GetByIdAsync(int id);
+    Task<T?> GetByIdAsync(Guid id);
 
     /// <summary>Retorna todas las entidades activas de la colección.</summary>
     Task<IEnumerable<T>> GetAllAsync();

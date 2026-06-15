@@ -8,7 +8,7 @@ public class DeleteCommand
 }
 
 
- public record DeleteCommand<ENT, DTO>(int id) : IRequest<bool>
+ public record DeleteCommand<ENT, DTO>(Guid id) : IRequest<bool>
         where ENT : class, new()
         where DTO : class, new();
 

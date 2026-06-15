@@ -2,6 +2,7 @@ namespace Application.Dto;
 
 public class PhysicalStructureDto
 {
+    public Guid? Id { get; set; }
     public string Name { get; set; }
     public string Nit { get; set; }
     public int UnitCount { get; set; }
