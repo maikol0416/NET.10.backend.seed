@@ -141,7 +141,7 @@ public class LocationValueObjectTests
         var location2 = CreateValid();
 
         // Assert
-        location1.Should().BeEquivalentTo(location2, options => options.Excluding(x => x.Created),
+        location1.Should().Be(location2,
             "los Value Objects son equivalentes en negocio si todos sus campos propios tienen el mismo valor.");
     }
 

@@ -2,9 +2,9 @@ using Domain.DomainShared;
 
 namespace Domain.BoundedContext.Properties;
 
-public record CommonAreaValueObject : ValueObject
+public class CommonAreaEntity : Entity
 {
-    public CommonAreaValueObject(string name, string description)
+    public CommonAreaEntity(string name, string description)
     {
         if(string.IsNullOrEmpty(name))
             throw new DomainException("el nombre del área común es obligatorio.");

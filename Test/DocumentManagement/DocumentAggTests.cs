@@ -61,7 +61,7 @@ public class DocumentAggTests
 
         // Assert
         doc.Id.Should().NotBeEmpty("el Id debe generarse automáticamente.");
-        doc.Status.Should().Be("1", "el estado inicial es activo.");
+        doc.Status.Should().Be("Active", "el estado inicial es activo.");
         doc.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
         doc.UpdateAt.Should().BeNull("el documento no ha sido actualizado aún.");
     }

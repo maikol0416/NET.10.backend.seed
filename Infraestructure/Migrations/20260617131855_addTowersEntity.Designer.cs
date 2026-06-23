@@ -4,6 +4,7 @@ using Infraestructure.Entity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infraestructure.Migrations
 {
     [DbContext(typeof(EntityDbContext))]
-    partial class EntityDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260617131855_addTowersEntity")]
+    partial class addTowersEntity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -79,8 +82,8 @@ namespace Infraestructure.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                        .HasMaxLength(1)
+                        .HasColumnType("nvarchar(1)");
 
                     b.Property<int>("UnitCount")
                         .HasColumnType("int");
@@ -93,6 +96,39 @@ namespace Infraestructure.Migrations
                     b.ToTable("PhysicalStructures", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.BoundedContext.Properties.Tower", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("Number");
+
+                    b.Property<Guid?>("PhysicalStructureId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(1)
+                        .HasColumnType("nvarchar(1)");
+
+                    b.Property<DateTime?>("UpdateAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PhysicalStructureId");
+
+                    b.ToTable("Towers", (string)null);
+                });
+
             modelBuilder.Entity("Domain.BoundedContext.DocumentManagement.DocumentAgg", b =>
                 {
                     b.OwnsMany("Domain.BoundedContext.DocumentManagement.SignatureValueObject", "Signatures", b1 =>
@@ -102,6 +138,9 @@ namespace Infraestructure.Migrations
                                 .HasColumnType("int");
 
                             SqlServerPropertyBuilderExtensions.UseIdentityColumn(b1.Property<int>("Id"));
+
+                            b1.Property<DateTime>("Created")
+                                .HasColumnType("datetime2");
 
                             b1.Property<Guid>("DocumentId")
                                 .HasColumnType("uniqueidentifier");
@@ -133,13 +172,15 @@ namespace Infraestructure.Migrations
 
             modelBuilder.Entity("Domain.BoundedContext.Properties.PhysicalStructureAgg", b =>
                 {
-                    b.OwnsMany("Domain.BoundedContext.Properties.CommonAreaEntity", "CommonsAreas", b1 =>
+                    b.OwnsMany("Domain.BoundedContext.Properties.CommonAreaValueObject", "CommonsAreas", b1 =>
                         {
-                            b1.Property<Guid>("Id")
+                            b1.Property<int>("Id")
                                 .ValueGeneratedOnAdd()
-                                .HasColumnType("uniqueidentifier");
+                                .HasColumnType("int");
 
-                            b1.Property<DateTime>("CreatedAt")
+                            SqlServerPropertyBuilderExtensions.UseIdentityColumn(b1.Property<int>("Id"));
+
+                            b1.Property<DateTime>("Created")
                                 .HasColumnType("datetime2");
 
                             b1.Property<string>("Description")
@@ -156,14 +197,6 @@ namespace Infraestructure.Migrations
 
                             b1.Property<Guid>("PhysicalStructureId")
                                 .HasColumnType("uniqueidentifier");
-
-                            b1.Property<string>("Status")
-                                .IsRequired()
-                                .HasMaxLength(10)
-                                .HasColumnType("nvarchar(10)");
-
-                            b1.Property<DateTime?>("UpdateAt")
-                                .HasColumnType("datetime2");
 
                             b1.HasKey("Id");
 
@@ -195,6 +228,9 @@ namespace Infraestructure.Migrations
                                 .HasColumnType("nvarchar(100)")
                                 .HasColumnName("Country");
 
+                            b1.Property<DateTime>("Created")
+                                .HasColumnType("datetime2");
+
                             b1.Property<string>("Detail")
                                 .IsRequired()
                                 .HasMaxLength(200)
@@ -221,43 +257,7 @@ namespace Infraestructure.Migrations
                             b1.HasIndex("PhysicalStructureId")
                                 .IsUnique();
 
-                            b1.ToTable("Location", (string)null);
-
-                            b1.WithOwner()
-                                .HasForeignKey("PhysicalStructureId");
-                        });
-
-                    b.OwnsMany("Domain.BoundedContext.Properties.TowerEntity", "Towers", b1 =>
-                        {
-                            b1.Property<Guid>("Id")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("uniqueidentifier");
-
-                            b1.Property<DateTime>("CreatedAt")
-                                .HasColumnType("datetime2");
-
-                            b1.Property<string>("Number")
-                                .IsRequired()
-                                .HasMaxLength(20)
-                                .HasColumnType("nvarchar(20)")
-                                .HasColumnName("Number");
-
-                            b1.Property<Guid>("PhysicalStructureId")
-                                .HasColumnType("uniqueidentifier");
-
-                            b1.Property<string>("Status")
-                                .IsRequired()
-                                .HasMaxLength(10)
-                                .HasColumnType("nvarchar(10)");
-
-                            b1.Property<DateTime?>("UpdateAt")
-                                .HasColumnType("datetime2");
-
-                            b1.HasKey("Id");
-
-                            b1.HasIndex("PhysicalStructureId");
-
-                            b1.ToTable("Tower", (string)null);
+                            b1.ToTable("Locations", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("PhysicalStructureId");
@@ -267,7 +267,18 @@ namespace Infraestructure.Migrations
 
                     b.Navigation("Location")
                         .IsRequired();
+                });
 
+            modelBuilder.Entity("Domain.BoundedContext.Properties.Tower", b =>
+                {
+                    b.HasOne("Domain.BoundedContext.Properties.PhysicalStructureAgg", null)
+                        .WithMany("Towers")
+                        .HasForeignKey("PhysicalStructureId")
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("Domain.BoundedContext.Properties.PhysicalStructureAgg", b =>
+                {
                     b.Navigation("Towers");
                 });
 #pragma warning restore 612, 618

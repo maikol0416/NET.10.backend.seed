@@ -6,7 +6,7 @@ namespace Test.Properties;
 /// <summary>
 /// Pruebas unitarias para PhysicalStructureAgg (Aggregate Root del BC Properties).
 /// Verifica: construcción válida, invariantes de dominio, estado inicial heredado de Entity
-/// y que las áreas comunes y ubicación se asignan correctamente.
+/// y que las áreas comunes, torres y ubicación se asignan correctamente.
 /// </summary>
 public class PhysicalStructureAggTests
 {
@@ -17,10 +17,16 @@ public class PhysicalStructureAggTests
     private static LocationValueObject ValidLocation() =>
         new("Cra 45", "Apto 101", "Colombia", "Medellín", "Laureles");
 
-    private static List<CommonAreaValueObject> ValidCommonAreas() =>
+    private static List<CommonAreaEntity> ValidCommonAreas() =>
     [
         new("Piscina", "Piscina climatizada"),
         new("Gimnasio", "Zona de ejercicio"),
+    ];
+
+    private static List<TowerEntity> ValidTowers() =>
+    [
+        new("Torre 1"),
+        new("Torre 2"),
     ];
 
     private static PhysicalStructureAgg CreateValid(
@@ -28,8 +34,9 @@ public class PhysicalStructureAggTests
         string nit           = "900123456-7",
         int    unitCount     = 50,
         LocationValueObject? location    = null,
-        List<CommonAreaValueObject>? areas = null) =>
-        new(name, nit, unitCount, location ?? ValidLocation(), areas ?? ValidCommonAreas());
+        List<CommonAreaEntity>? areas = null,
+        List<TowerEntity>? towers = null) =>
+        new(name, nit, unitCount, location ?? ValidLocation(), areas ?? ValidCommonAreas(), towers ?? ValidTowers());
 
     // ─────────────────────────────────────────────
     // Happy Path
@@ -47,6 +54,7 @@ public class PhysicalStructureAggTests
         agg.UnitCount.Should().Be(50);
         agg.Location.Should().NotBeNull();
         agg.CommonsAreas.Should().HaveCount(2);
+        agg.Towers.Should().HaveCount(2);
     }
 
     [Fact]
@@ -57,7 +65,7 @@ public class PhysicalStructureAggTests
 
         // Assert
         agg.Id.Should().NotBeEmpty("el Id debe generarse automáticamente.");
-        agg.Status.Should().Be("1", "el estado inicial es activo.");
+        agg.Status.Should().Be("Active", "el estado inicial es activo.");
         agg.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
         agg.UpdateAt.Should().BeNull("no se ha actualizado aún.");
     }
@@ -71,6 +79,17 @@ public class PhysicalStructureAggTests
         // Assert
         agg.CommonsAreas.Should().BeEmpty(
             "una estructura física puede existir sin áreas comunes registradas.");
+    }
+
+    [Fact]
+    public void Constructor_WithEmptyTowers_ShouldCreateSuccessfully()
+    {
+        // Act — es válido tener una estructura sin torres
+        var agg = CreateValid(towers: []);
+
+        // Assert
+        agg.Towers.Should().BeEmpty(
+            "una estructura física puede existir sin torres registradas.");
     }
 
     // ─────────────────────────────────────────────
@@ -133,7 +152,7 @@ public class PhysicalStructureAggTests
     {
         // Act
         var act = () => new PhysicalStructureAgg(
-            "Torres del Norte", "900000001-1", 10, null!, ValidCommonAreas());
+            "Torres del Norte", "900000001-1", 10, null!, ValidCommonAreas(), ValidTowers());
 
         // Assert
         act.Should().ThrowExactly<DomainException>()
@@ -176,42 +195,42 @@ public class PhysicalStructureAggTests
     // ─────────────────────────────────────────────
 
     [Fact]
-    public void UpdateBasicInfo_WithValidData_ShouldUpdateMutableFieldsOnly()
+    public void Update_WithValidData_ShouldUpdateMutableFieldsOnly()
     {
         // Arrange
         var agg = CreateValid();
-        var newLocation = new LocationValueObject("Cra 50", "Apto 202", "Colombia", "Medellín", "El Poblado");
+        var originalLocation = agg.Location;
         var originalCommonAreas = agg.CommonsAreas.ToList();
+        var originalTowers = agg.Towers.ToList();
 
         // Act
-        agg.UpdateBasicInfo("Nuevo Nombre", "900987654-3", 100, newLocation);
+        agg.Update("Nuevo Nombre", "900987654-3", 100);
 
         // Assert
         agg.Name.Should().Be("Nuevo Nombre");
         agg.Nit.Should().Be("900987654-3");
         agg.UnitCount.Should().Be(100);
-        agg.Location.Should().BeEquivalentTo(newLocation);
+        agg.Location.Should().BeEquivalentTo(originalLocation);
         
-        // Ensure common areas were untouched
+        // Ensure common areas untouched
         agg.CommonsAreas.Should().BeEquivalentTo(originalCommonAreas);
+        
+        // Ensure towers untouched (sync is done in the repository)
+        agg.Towers.Should().BeEquivalentTo(originalTowers);
     }
 
     [Fact]
-    public void UpdateBasicInfo_WithInvalidData_ShouldThrowDomainExceptionAndNotUpdate()
+    public void Update_WithInvalidData_ShouldThrowDomainExceptionAndNotUpdate()
     {
         // Arrange
         var agg = CreateValid(name: "Torres Originales");
-        var originalLocation = agg.Location;
 
         // Act
-        var act = () => agg.UpdateBasicInfo("", "900987654-3", 100, originalLocation);
+        var act = () => agg.Update("", "900987654-3", 100);
 
         // Assert
         act.Should().ThrowExactly<DomainException>()
            .WithMessage("*nombre*", "el nombre no puede ser vacío al actualizar.");
-           
-        // Ensure state was not partially updated before the throw if we consider invariants run at the end.
-        // Wait, the invariants are run at the end of the method, so fields ARE modified in memory before throwing.
-        // This is a known consequence of how ExcecuteDomainInvariants works.
     }
+
 }

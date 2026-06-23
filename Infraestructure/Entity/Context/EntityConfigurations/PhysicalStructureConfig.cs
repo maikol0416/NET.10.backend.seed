@@ -12,7 +12,7 @@ public class PhysicalStructureConfig :IEntityTypeConfiguration<PhysicalStructure
 
         builder.Property(p => p.Status)
             .IsRequired()
-            .HasMaxLength(1);
+            .HasMaxLength(10);
 
         builder.Property(p => p.CreatedAt)
             .IsRequired();
@@ -33,7 +33,7 @@ public class PhysicalStructureConfig :IEntityTypeConfiguration<PhysicalStructure
 
         builder.OwnsOne(p => p.Location, locationBuilder =>
         {
-            locationBuilder.ToTable("Locations");
+            locationBuilder.ToTable("Location");
 
             locationBuilder.WithOwner().HasForeignKey("PhysicalStructureId");
 
@@ -70,8 +70,18 @@ public class PhysicalStructureConfig :IEntityTypeConfiguration<PhysicalStructure
         {
             commonAreaBuilder.ToTable("CommonArea");
             commonAreaBuilder.WithOwner().HasForeignKey("PhysicalStructureId");
-            commonAreaBuilder.Property<int>("Id");
-            commonAreaBuilder.HasKey("Id");
+            commonAreaBuilder.Property(t => t.Id).ValueGeneratedNever();
+            commonAreaBuilder.HasKey(t => t.Id);
+
+            commonAreaBuilder.Property(t => t.Status)
+                .IsRequired()
+                .HasMaxLength(10);
+
+            commonAreaBuilder.Property(t => t.CreatedAt)
+                .IsRequired();
+
+            commonAreaBuilder.Property(t => t.UpdateAt)
+                .IsRequired(false);
 
             commonAreaBuilder.Property(c => c.Name)
                 .HasColumnName("Name")
@@ -83,5 +93,29 @@ public class PhysicalStructureConfig :IEntityTypeConfiguration<PhysicalStructure
                 .IsRequired()
                 .HasMaxLength(500);
         });
+
+        builder.OwnsMany(p => p.Towers, towerBuilder => 
+        {
+            towerBuilder.ToTable("Tower");
+            towerBuilder.WithOwner().HasForeignKey("PhysicalStructureId");
+            towerBuilder.Property(t => t.Id).ValueGeneratedNever();
+            towerBuilder.HasKey(t => t.Id);
+
+            towerBuilder.Property(t => t.Status)
+                .IsRequired()
+                .HasMaxLength(10);
+
+            towerBuilder.Property(t => t.CreatedAt)
+                .IsRequired();
+
+            towerBuilder.Property(t => t.UpdateAt)
+                .IsRequired(false);
+
+            towerBuilder.Property(t => t.Number)
+                .HasColumnName("Number")
+                .IsRequired()
+                .HasMaxLength(20);
+        });
+
     }
 }

@@ -53,7 +53,7 @@ public class EntityTests
         var entity = new StubEntity();
 
         // Assert
-        entity.Status.Should().Be("1",
+        entity.Status.Should().Be("Active",
             "el estado inicial por convención del dominio es '1' (activo).");
     }
 

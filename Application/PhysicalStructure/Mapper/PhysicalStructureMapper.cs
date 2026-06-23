@@ -21,14 +21,21 @@ public static class PhysicalStructureMapper
                     src.Neighborhood
                 ),
                 src.CommonAreas                                 
-                    .Select(ca => new CommonAreaValueObject(ca.Name, ca.Description))
+                    .Select(ca => new CommonAreaEntity(ca.Name, ca.Description))
+                    .ToList(),
+                src.Towers
+                    .Select(t => t.Id.HasValue && t.Id.Value != Guid.Empty
+                        ? new TowerEntity(t.Id.Value, t.Number)
+                        : new TowerEntity(t.Number))
                     .ToList()
             ))
             .ForMember(dest => dest.Name,        opt => opt.Ignore())
             .ForMember(dest => dest.CommonsAreas, opt => opt.Ignore())  
-            .ForMember(dest => dest.Location,    opt => opt.Ignore()); 
+            .ForMember(dest => dest.Location,    opt => opt.Ignore())
+            .ForMember(dest => dest.Towers,      opt => opt.Ignore()); 
 
         cnf.CreateMap<PhysicalStructureAgg, PhysicalStructureDto>()
+            .ForMember(dest => dest.Id,             opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.Name,           opt => opt.MapFrom(src => src.Name))
             .ForMember(dest => dest.Nit,            opt => opt.MapFrom(src => src.Nit))
             .ForMember(dest => dest.UnitCount,      opt => opt.MapFrom(src => src.UnitCount))
@@ -40,6 +47,11 @@ public static class PhysicalStructureMapper
             .ForMember(dest => dest.CommonAreas,    opt => opt.MapFrom(src =>
                 src.CommonsAreas
                     .Select(ca => new CommonAreaDto { Name = ca.Name, Description = ca.Description })
+                    .ToList()
+            ))
+            .ForMember(dest => dest.Towers,         opt => opt.MapFrom(src =>
+                src.Towers
+                    .Select(t => new TowerDto { Id = t.Id, Number = t.Number })
                     .ToList()
             ));
     }

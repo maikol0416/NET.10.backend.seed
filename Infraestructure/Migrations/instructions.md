@@ -1,0 +1,2 @@
+dotnet ef migrations add UpdateCommunArea --project Infraestructure --startup-project Api --context EntityDbContext 
+dotnet ef database update --project Infraestructure --startup-project Api --context EntityDbContext  

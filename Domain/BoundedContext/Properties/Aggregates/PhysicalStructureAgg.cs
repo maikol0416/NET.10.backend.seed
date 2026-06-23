@@ -12,7 +12,8 @@ public class PhysicalStructureAgg : AggregateRoot
                                 string nit,
                                 int unitCount,
                                 LocationValueObject location,
-                                List<CommonAreaValueObject> commonAreas
+                                List<CommonAreaEntity> commonAreas,
+                                List<TowerEntity> towers
                                 ):base()
     {
         Name = name;
@@ -20,26 +21,51 @@ public class PhysicalStructureAgg : AggregateRoot
         UnitCount = unitCount;
         CommonsAreas = commonAreas;
         Location = location;
+        Towers = towers ?? new List<TowerEntity>();
         ExcecuteDomainInvariants();
 
     }
     public  string Name { get; private set; }
     public string Nit { get; set; }
     public int UnitCount { get; set; }
-    public List<CommonAreaValueObject> CommonsAreas { get; private set; }
+    public List<CommonAreaEntity> CommonsAreas { get; private set; }
     public LocationValueObject Location { get; private set; }
+    public List<TowerEntity> Towers { get; private set; }
 
     /// <summary>
     /// Actualiza los campos básicos de la estructura física.
-    /// Las áreas comunes (CommonAreas) son Value Objects inmutables y NO se actualizan aquí.
+    /// Las áreas comunes y torres se sincronizan a través de sus respectivos métodos.
     /// </summary>
-    public void UpdateBasicInfo(string name, string nit, int unitCount, LocationValueObject location)
+    public void Update(string name, string nit, int unitCount)
     {
         Name = name;
         Nit = nit;
         UnitCount = unitCount;
-        Location = location;
         ExcecuteDomainInvariants();
+    }
+
+    public void UpdateTowers(IEnumerable<TowerEntity> incomingTowers)
+    {
+        Towers.Clear();
+        if (incomingTowers != null)
+        {
+            foreach (var incomingTower in incomingTowers)
+            {
+                Towers.Add(new TowerEntity(incomingTower.Number));
+            }
+        }
+    }
+
+    public void UpdateCommonsAreas(IEnumerable<CommonAreaEntity> incomingCommonAreas)
+    {
+        CommonsAreas.Clear();
+        if (incomingCommonAreas != null)
+        {
+            foreach (var incomingCommonArea in incomingCommonAreas)
+            {
+                CommonsAreas.Add(new CommonAreaEntity(incomingCommonArea.Name, incomingCommonArea.Description));
+            }
+        }
     }
 
     protected override void ExcecuteDomainInvariants()

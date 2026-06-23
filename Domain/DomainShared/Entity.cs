@@ -5,7 +5,7 @@ public abstract class Entity
     public Entity()
     {
         Id = Guid.NewGuid();
-        Status = "1";
+        Status = StatusEnum.Active.ToString();
         CreatedAt = DateTime.UtcNow;
         UpdateAt = null;
     }

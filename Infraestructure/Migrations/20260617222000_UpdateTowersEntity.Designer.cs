@@ -4,6 +4,7 @@ using Infraestructure.Entity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infraestructure.Migrations
 {
     [DbContext(typeof(EntityDbContext))]
-    partial class EntityDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260617222000_UpdateTowersEntity")]
+    partial class UpdateTowersEntity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -79,8 +82,8 @@ namespace Infraestructure.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                        .HasMaxLength(1)
+                        .HasColumnType("nvarchar(1)");
 
                     b.Property<int>("UnitCount")
                         .HasColumnType("int");
@@ -102,6 +105,9 @@ namespace Infraestructure.Migrations
                                 .HasColumnType("int");
 
                             SqlServerPropertyBuilderExtensions.UseIdentityColumn(b1.Property<int>("Id"));
+
+                            b1.Property<DateTime>("Created")
+                                .HasColumnType("datetime2");
 
                             b1.Property<Guid>("DocumentId")
                                 .HasColumnType("uniqueidentifier");
@@ -133,13 +139,15 @@ namespace Infraestructure.Migrations
 
             modelBuilder.Entity("Domain.BoundedContext.Properties.PhysicalStructureAgg", b =>
                 {
-                    b.OwnsMany("Domain.BoundedContext.Properties.CommonAreaEntity", "CommonsAreas", b1 =>
+                    b.OwnsMany("Domain.BoundedContext.Properties.CommonAreaValueObject", "CommonsAreas", b1 =>
                         {
-                            b1.Property<Guid>("Id")
+                            b1.Property<int>("Id")
                                 .ValueGeneratedOnAdd()
-                                .HasColumnType("uniqueidentifier");
+                                .HasColumnType("int");
 
-                            b1.Property<DateTime>("CreatedAt")
+                            SqlServerPropertyBuilderExtensions.UseIdentityColumn(b1.Property<int>("Id"));
+
+                            b1.Property<DateTime>("Created")
                                 .HasColumnType("datetime2");
 
                             b1.Property<string>("Description")
@@ -156,14 +164,6 @@ namespace Infraestructure.Migrations
 
                             b1.Property<Guid>("PhysicalStructureId")
                                 .HasColumnType("uniqueidentifier");
-
-                            b1.Property<string>("Status")
-                                .IsRequired()
-                                .HasMaxLength(10)
-                                .HasColumnType("nvarchar(10)");
-
-                            b1.Property<DateTime?>("UpdateAt")
-                                .HasColumnType("datetime2");
 
                             b1.HasKey("Id");
 
@@ -195,6 +195,9 @@ namespace Infraestructure.Migrations
                                 .HasColumnType("nvarchar(100)")
                                 .HasColumnName("Country");
 
+                            b1.Property<DateTime>("Created")
+                                .HasColumnType("datetime2");
+
                             b1.Property<string>("Detail")
                                 .IsRequired()
                                 .HasMaxLength(200)
@@ -221,13 +224,13 @@ namespace Infraestructure.Migrations
                             b1.HasIndex("PhysicalStructureId")
                                 .IsUnique();
 
-                            b1.ToTable("Location", (string)null);
+                            b1.ToTable("Locations", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("PhysicalStructureId");
                         });
 
-                    b.OwnsMany("Domain.BoundedContext.Properties.TowerEntity", "Towers", b1 =>
+                    b.OwnsMany("Domain.BoundedContext.Properties.Tower", "Towers", b1 =>
                         {
                             b1.Property<Guid>("Id")
                                 .ValueGeneratedOnAdd()
@@ -247,8 +250,8 @@ namespace Infraestructure.Migrations
 
                             b1.Property<string>("Status")
                                 .IsRequired()
-                                .HasMaxLength(10)
-                                .HasColumnType("nvarchar(10)");
+                                .HasMaxLength(1)
+                                .HasColumnType("nvarchar(1)");
 
                             b1.Property<DateTime?>("UpdateAt")
                                 .HasColumnType("datetime2");
@@ -257,7 +260,7 @@ namespace Infraestructure.Migrations
 
                             b1.HasIndex("PhysicalStructureId");
 
-                            b1.ToTable("Tower", (string)null);
+                            b1.ToTable("Towers", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("PhysicalStructureId");
