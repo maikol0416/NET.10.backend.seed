@@ -10,6 +10,7 @@ using Domain.Ports.Identity;
 using Infraestructure.Identity;
 using Infraestructure.Repository.Properties;
 using Infraestructure.Repository.DocumentManagement;
+using Infraestructure.Repository.People;
 
 namespace Infraestructure.Entity;
 
@@ -97,10 +98,12 @@ public static class DependencyInjection
         //Repository — Command side (escritura)
         services.AddScoped<IPhysicalStructureRepository, PhysicalStructureRepository>();
         services.AddScoped<IDocumentRepository, DocumentRepository>();
+        services.AddScoped<IOwnerRepository, OwnerRepository>();
 
         //Repository — Query side (solo lectura)
         services.AddScoped<IPhysicalStructureReadOnlyRepository, PhysicalStructureReadOnlyRepository>();
         services.AddScoped<IDocumentReadOnlyRepository, DocumentReadOnlyRepository>();
+        services.AddScoped<IOwnerReadOnlyRepository, OwnerReadOnlyRepository>();
 
         return services;
     }

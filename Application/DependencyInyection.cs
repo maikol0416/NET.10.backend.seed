@@ -7,6 +7,7 @@ using Application.Service;
 using Application.Validator;
 using Domain.BoundedContext.Properties;
 using Domain.BoundedContext.DocumentManagement;
+using Domain.BoundedContext.People;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,10 +30,12 @@ public static class DependencyInyection
 
         services.RegisterMediatrAbstractService<PhysicalStructureService, PhysicalStructureDto, PhysicalStructureAgg, IPhysicalStructureService>();
         services.RegisterMediatrAbstractService<DocumentService, DocumentDto, DocumentAgg, IDocumentService>();
+        services.RegisterMediatrAbstractService<OwnerService, OwnerDto, OwnerAgg, IOwnerService>();
 
         // Query side — servicios de solo lectura con EntityReadOnlyDbContext (NoTracking)
         services.RegisterMediatrAbstractReadOnlyService<PhysicalStructureReadOnlyService, PhysicalStructureDto, PhysicalStructureAgg, IPhysicalStructureReadOnlyService>();
         services.RegisterMediatrAbstractReadOnlyService<DocumentReadOnlyService, DocumentDto, DocumentAgg, IDocumentReadOnlyService>();
+        services.RegisterMediatrAbstractReadOnlyService<OwnerReadOnlyService, OwnerDto, OwnerAgg, IOwnerReadOnlyService>();
         return services;
     }
 
@@ -40,6 +43,7 @@ public static class DependencyInyection
     {
         services.AddScoped<IValidator<PhysicalStructureDto>, PhysicalStructureValidator>();
         services.AddScoped<IValidator<DocumentDto>, DocumentValidator>();
+        services.AddScoped<IValidator<OwnerDto>, OwnerValidator>();
 
         // Auth validators
         services.AddScoped<IValidator<AuthLoginDto>, LoginValidator>();

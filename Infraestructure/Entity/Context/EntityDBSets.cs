@@ -1,5 +1,6 @@
 using Domain.BoundedContext.DocumentManagement;
 using Domain.BoundedContext.Properties;
+using Domain.BoundedContext.People;
 using Domain.Ports;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,7 +15,9 @@ public abstract class EntityDBSets : DbContext
     {
         modelBuilder.ApplyConfiguration(new PhysicalStructureConfig());
         modelBuilder.ApplyConfiguration(new DocumentConfig());
+        modelBuilder.ApplyConfiguration(new OwnerConfig());
     }
     public DbSet<PhysicalStructureAgg> PhysicalStructure { get; set; }
     public DbSet<DocumentAgg> Document { get; set; }
+    public DbSet<OwnerAgg> Owner { get; set; }
 }

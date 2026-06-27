@@ -1,2 +1,2 @@
-dotnet ef migrations add InitialCreate --project Infraestructure --startup-project Api
-dotnet ef database update --project Infraestructure --startup-project Api
+dotnet ef migrations add AddOwnerAggregate --context EntityDbContext --project Infraestructure --startup-project Api
+dotnet ef database update --context EntityDbContext --project Infraestructure --startup-project Api
