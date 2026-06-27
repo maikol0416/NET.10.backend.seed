@@ -25,8 +25,8 @@ public class PhysicalStructureAggTests
 
     private static List<TowerEntity> ValidTowers() =>
     [
-        new("Torre 1"),
-        new("Torre 2"),
+        new("Torre 1", 10),
+        new("Torre 2", 15),
     ];
 
     private static PhysicalStructureAgg CreateValid(

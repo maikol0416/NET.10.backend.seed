@@ -261,6 +261,59 @@ public class PhysicalStructureAgg : AggregateRoot
 }
 ```
 
+### Métodos de actualización de colecciones en el Agregado
+
+Cuando un Aggregate Root tiene colecciones de Entidades hijas o Value Objects (`OwnsMany`), la responsabilidad de sincronizar esas colecciones debe residir en el **Agregado**, NO en el repositorio. El repositorio solo invoca los métodos del agregado.
+
+Patrón:
+- El agregado expone un método `Update{Colección}(IEnumerable<{Entity}> incoming)`.
+- El método limpia la colección actual y recrea las entidades/VOs a partir de los datos entrantes.
+- Se valida null para evitar excepciones.
+
+### C# template — Método de actualización de colección
+
+```csharp
+public void Update{Colección}(IEnumerable<{Entity}> incoming{Colección})
+{
+    {Colección}.Clear();
+    if (incoming{Colección} != null)
+    {
+        foreach (var item in incoming{Colección})
+        {
+            {Colección}.Add(new {Entity}(item.{Campo1}, item.{Campo2}));
+        }
+    }
+}
+```
+
+### C# ejemplo concreto — UpdateTowers y UpdateCommonsAreas
+
+```csharp
+public void UpdateTowers(IEnumerable<TowerEntity> incomingTowers)
+{
+    Towers.Clear();
+    if (incomingTowers != null)
+    {
+        foreach (var incomingTower in incomingTowers)
+        {
+            Towers.Add(new TowerEntity(incomingTower.Number, incomingTower.Floors));
+        }
+    }
+}
+
+public void UpdateCommonsAreas(IEnumerable<CommonAreaEntity> incomingCommonAreas)
+{
+    CommonsAreas.Clear();
+    if (incomingCommonAreas != null)
+    {
+        foreach (var incomingCommonArea in incomingCommonAreas)
+        {
+            CommonsAreas.Add(new CommonAreaEntity(incomingCommonArea.Name, incomingCommonArea.Description));
+        }
+    }
+}
+```
+
 ---
 
 ## Value Objects
@@ -343,6 +396,152 @@ public record LocationValueObject : ValueObject
     public string Country { get; private set; }
     public string City { get; private set; }
     public string Neighborhood { get; private set; }
+}
+```
+
+---
+
+## Entidades Hijas (Child Entities)
+
+### Teoría
+
+Las Entidades hijas representan conceptos del dominio que tienen **identidad propia** (`Id`, `Status`, `CreatedAt`, `UpdateAt`) pero que pertenecen a un Agregado y solo se acceden a través de la Raíz del Agregado. A diferencia de los Value Objects, las entidades tienen ciclo de vida propio y se identifican por su `Id`, no por sus atributos.
+
+Reglas clave:
+- Heredan de `Entity` (NO de `AggregateRoot`).
+- Tienen `get; private set;` en todas sus propiedades.
+- Incluyen un constructor vacío `public` para EF Core y un constructor de negocio con validaciones.
+- Pueden tener un constructor de reconstrucción (con `Guid id`) para hidratar entidades existentes desde BD.
+- Incluyen métodos de validación privados estáticos (`ValidateXxx`) y un método `Update(...)` para mutación controlada.
+- Se nombran con el sufijo `Entity` (ej. `TowerEntity`, `CommonAreaEntity`).
+
+### Artefactos
+
+| Capa | Ruta | Descripción |
+|---|---|---|
+| Domain | `Domain/BoundedContext/{BC}/Aggregates/{Nombre}Entity.cs` | Entidad hija del agregado |
+
+### C# template genérico
+
+```csharp
+using Domain.DomainShared;
+
+namespace Domain.BoundedContext.{BoundedContext};
+
+/// <summary>
+/// Entidad {Nombre}Entity — representa {descripción} dentro de {Agregado}.
+/// Pertenece al agregado {Agregado}Agg. Solo se accede a través del Aggregate Root.
+/// </summary>
+public class {Nombre}Entity : Entity
+{
+    /// <summary>Constructor para ORM (Entity Framework).</summary>
+    public {Nombre}Entity() { }
+
+    /// <summary>Constructor de negocio (nueva entidad).</summary>
+    public {Nombre}Entity({parametros_campos}) : base()
+    {
+        Validate{Campo1}({campo1});
+        // ... validar resto de campos
+        {Campo1} = {campo1};
+        // ... asignar resto de campos
+    }
+
+    /// <summary>Constructor para reconstrucción (entidad existente con Id conocido).</summary>
+    public {Nombre}Entity(Guid id, {parametros_campos}) : base()
+    {
+        Validate{Campo1}({campo1});
+        // ... validar resto de campos
+        Id = id;
+        {Campo1} = {campo1};
+        // ... asignar resto de campos
+    }
+
+    private static void Validate{Campo1}({Tipo} {campo1})
+    {
+        if (string.IsNullOrWhiteSpace({campo1}))
+            throw new DomainException("{Mensaje de error}");
+    }
+
+    // Campos propios (get; private set;)
+    public {Tipo} {Campo1} { get; private set; }
+
+    /// <summary>
+    /// Actualiza la entidad con validación de negocio.
+    /// </summary>
+    public void Update({parametros_campos})
+    {
+        Validate{Campo1}({campo1});
+        // ... validar resto de campos
+        {Campo1} = {campo1};
+        // ... asignar resto de campos
+    }
+}
+```
+
+### C# ejemplo concreto — TowerEntity
+
+```csharp
+using Domain.DomainShared;
+
+namespace Domain.BoundedContext.Properties;
+
+/// <summary>
+/// Entidad TowerEntity — representa una torre dentro de una estructura física.
+/// Pertenece al agregado PhysicalStructureAgg. Solo se accede a través del Aggregate Root.
+/// </summary>
+public class TowerEntity : Entity
+{
+    /// <summary>Constructor para ORM (Entity Framework).</summary>
+    public TowerEntity() { }
+
+    /// <summary>Constructor de negocio (nueva torre).</summary>
+    public TowerEntity(string number, int floors) : base()
+    {
+        ValidateNumber(number);
+        ValidateFloors(floors);
+        Number = number;
+        Floors = floors;
+    }
+
+    /// <summary>Constructor para reconstrucción (torre existente con Id conocido).</summary>
+    public TowerEntity(Guid id, string number, int floors) : base()
+    {
+        ValidateNumber(number);
+        ValidateFloors(floors);
+        Id = id;
+        Number = number;
+        Floors = floors;
+    }
+
+    private static void ValidateNumber(string number)
+    {
+        if (string.IsNullOrWhiteSpace(number))
+            throw new DomainException("El número de la torre es obligatorio.");
+
+        if (number.Length > 20)
+            throw new DomainException("El número de la torre no puede exceder los 20 caracteres.");
+    }
+
+    private static void ValidateFloors(int floors)
+    {
+        if (floors <= 0)
+            throw new DomainException("El número de pisos debe ser mayor a 0.");
+    }
+
+    public string Number { get; private set; }
+    public int Floors { get; private set; }
+
+    /// <summary>
+    /// Actualiza la torre con validación de negocio.
+    /// </summary>
+    public void Update(string number, int floors)
+    {
+        ValidateNumber(number);
+        ValidateFloors(floors);
+
+        Number = number;
+        Floors = floors;
+    }
 }
 ```
 
@@ -439,6 +638,55 @@ services.AddScoped<I{Nombre}Repository, {Nombre}Repository>();
 Agregar el using:
 ```csharp
 using Infraestructure.Repository.{BoundedContext};
+```
+
+### Override UpdateAsync (agregados con colecciones OwnsMany)
+
+Cuando el agregado contiene colecciones de Entidades hijas o Value Objects (`OwnsMany`), el `UpdateAsync` base del repositorio genérico no gestiona correctamente la sincronización de las colecciones. Se debe sobrecargar para:
+1. Cargar el agregado completo desde BD con `.Include()` de cada colección.
+2. Invocar los métodos de actualización del agregado (`Update`, `Update{Colección}`).
+3. Persistir los cambios.
+
+### C# template — Override UpdateAsync
+
+```csharp
+public override async Task<{Nombre}Agg> UpdateAsync({Nombre}Agg ent)
+{
+    // Cargar el agregado completo con sus owned entities
+    var tracked = await entity
+        .Include(p => p.{Colección1})
+        .Include(p => p.{Colección2})
+        .FirstOrDefaultAsync(p => p.Id == ent.Id)
+        ?? throw new Exception($"No se encontró con Id {ent.Id} para actualizar.");
+
+    // Delegar la actualización al agregado (lógica de negocio en el dominio)
+    tracked.Update(ent.{Campo1}, ent.{Campo2}, ent.{Campo3});
+    tracked.Update{Colección1}(ent.{Colección1});
+    tracked.Update{Colección2}(ent.{Colección2});
+
+    await MainContext.SaveChangesAsync();
+    return tracked;
+}
+```
+
+### C# ejemplo concreto — PhysicalStructureRepository
+
+```csharp
+public override async Task<PhysicalStructureAgg> UpdateAsync(PhysicalStructureAgg ent)
+{
+    var tracked = await entity
+        .Include(p => p.CommonsAreas)
+        .Include(p => p.Towers)
+        .FirstOrDefaultAsync(p => p.Id == ent.Id)
+        ?? throw new Exception($"No se encontró la estructura física con Id {ent.Id} para actualizar.");
+
+    tracked.Update(ent.Name, ent.Nit, ent.UnitCount);
+    tracked.UpdateTowers(ent.Towers);
+    tracked.UpdateCommonsAreas(ent.CommonsAreas);
+
+    await MainContext.SaveChangesAsync();
+    return tracked;
+}
 ```
 
 ---
@@ -990,9 +1238,39 @@ public class {Nombre}Config : IEntityTypeConfiguration<{Nombre}Agg>
                 .IsRequired()
                 .HasMaxLength({max});
         });
+
+        // OwnsMany: Entidad hija (hereda de Entity — tiene Id, Status, CreatedAt, UpdateAt)
+        builder.OwnsMany(p => p.{Entidades}, entityBuilder =>
+        {
+            entityBuilder.ToTable("{NombreTablaEntity}");
+            entityBuilder.WithOwner().HasForeignKey("{Nombre}Id");
+            entityBuilder.Property(t => t.Id).ValueGeneratedNever();
+            entityBuilder.HasKey(t => t.Id);
+
+            // ✅ Campos heredados de Entity (SIEMPRE incluir para entidades hijas)
+            entityBuilder.Property(t => t.Status)
+                .IsRequired()
+                .HasMaxLength(10);
+
+            entityBuilder.Property(t => t.CreatedAt)
+                .IsRequired();
+
+            entityBuilder.Property(t => t.UpdateAt)
+                .IsRequired(false);
+
+            // Campos propios de la entidad
+            entityBuilder.Property(t => t.{Campo})
+                .HasColumnName("{Campo}")
+                .IsRequired()
+                .HasMaxLength({max});
+        });
     }
 }
 ```
+
+> **Diferencia clave Entity vs Value Object en OwnsMany:**
+> - **Entidad hija**: usa `t => t.Id` (propiedad existente heredada de `Entity`) con `ValueGeneratedNever()`.
+> - **Value Object**: usa `Property<int>("Id")` (shadow property creada por EF Core) con `HasKey("Id")`.
 
 ### Registro en `Infraestructure/Entity/Context/EntityDBSets.cs`
 

@@ -6,7 +6,7 @@ namespace Test.Properties;
 /// <summary>
 /// Pruebas unitarias para Tower (Entidad del BC Properties).
 /// Verifica: construcción válida, guard clauses, estado inicial heredado de Entity,
-/// y método de negocio UpdateNumber.
+/// y método de negocio Update.
 /// </summary>
 public class TowerTests
 {
@@ -18,17 +18,18 @@ public class TowerTests
     public void Constructor_WithValidNumber_ShouldCreateSuccessfully()
     {
         // Act
-        var tower = new TowerEntity("Torre 1");
+        var tower = new TowerEntity("Torre 1", 10);
 
         // Assert
         tower.Number.Should().Be("Torre 1");
+        tower.Floors.Should().Be(10);
     }
 
     [Fact]
     public void Constructor_WithValidData_ShouldInitializeEntityState()
     {
         // Act
-        var tower = new TowerEntity("Torre A");
+        var tower = new TowerEntity("Torre A", 10);
 
         // Assert
         tower.Id.Should().NotBeEmpty("el Id debe generarse automáticamente.");
@@ -44,7 +45,7 @@ public class TowerTests
         var exactNumber = new string('T', 20);
 
         // Act
-        var act = () => new TowerEntity(exactNumber);
+        var act = () => new TowerEntity(exactNumber, 10);
 
         // Assert
         act.Should().NotThrow("20 caracteres es el límite permitido, no debe fallar.");
@@ -61,7 +62,7 @@ public class TowerTests
     public void Constructor_WithNullOrWhiteSpaceNumber_ShouldThrowDomainException(string? invalidNumber)
     {
         // Act
-        var act = () => new TowerEntity(invalidNumber!);
+        var act = () => new TowerEntity(invalidNumber!, 10);
 
         // Assert
         act.Should().ThrowExactly<DomainException>()
@@ -80,7 +81,7 @@ public class TowerTests
         var longNumber = new string('T', 21);
 
         // Act
-        var act = () => new TowerEntity(longNumber);
+        var act = () => new TowerEntity(longNumber, 10);
 
         // Assert
         act.Should().ThrowExactly<DomainException>()
@@ -103,33 +104,34 @@ public class TowerTests
     }
 
     // ─────────────────────────────────────────────
-    // Método de negocio — UpdateNumber
+    // Método de negocio — Update
     // ─────────────────────────────────────────────
 
     [Fact]
-    public void UpdateNumber_WithValidNumber_ShouldUpdateSuccessfully()
+    public void Update_WithValidData_ShouldUpdateSuccessfully()
     {
         // Arrange
-        var tower = new TowerEntity("Torre 1");
+        var tower = new TowerEntity("Torre 1", 10);
 
         // Act
-        tower.UpdateNumber("Torre 2");
+        tower.Update("Torre 2", 15);
 
         // Assert
         tower.Number.Should().Be("Torre 2");
+        tower.Floors.Should().Be(15);
     }
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void UpdateNumber_WithInvalidNumber_ShouldThrowDomainException(string? invalidNumber)
+    public void Update_WithInvalidNumber_ShouldThrowDomainException(string? invalidNumber)
     {
         // Arrange
-        var tower = new TowerEntity("Torre 1");
+        var tower = new TowerEntity("Torre 1", 10);
 
         // Act
-        var act = () => tower.UpdateNumber(invalidNumber!);
+        var act = () => tower.Update(invalidNumber!, 10);
 
         // Assert
         act.Should().ThrowExactly<DomainException>()
@@ -137,14 +139,14 @@ public class TowerTests
     }
 
     [Fact]
-    public void UpdateNumber_WithNumberExceeding20Chars_ShouldThrowDomainException()
+    public void Update_WithNumberExceeding20Chars_ShouldThrowDomainException()
     {
         // Arrange
-        var tower = new TowerEntity("Torre 1");
+        var tower = new TowerEntity("Torre 1", 10);
         var longNumber = new string('T', 21);
 
         // Act
-        var act = () => tower.UpdateNumber(longNumber);
+        var act = () => tower.Update(longNumber, 10);
 
         // Assert
         act.Should().ThrowExactly<DomainException>()
@@ -159,8 +161,8 @@ public class TowerTests
     public void TwoTowers_WithDifferentIds_ShouldNotBeEqual()
     {
         // Arrange
-        var tower1 = new TowerEntity("Torre 1");
-        var tower2 = new TowerEntity("Torre 1");
+        var tower1 = new TowerEntity("Torre 1", 10);
+        var tower2 = new TowerEntity("Torre 1", 10);
 
         // Assert — son entidades, la igualdad es por identidad (Id), no por atributos
         tower1.Id.Should().NotBe(tower2.Id,

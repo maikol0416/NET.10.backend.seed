@@ -25,8 +25,8 @@ public static class PhysicalStructureMapper
                     .ToList(),
                 src.Towers
                     .Select(t => t.Id.HasValue && t.Id.Value != Guid.Empty
-                        ? new TowerEntity(t.Id.Value, t.Number)
-                        : new TowerEntity(t.Number))
+                        ? new TowerEntity(t.Id.Value, t.Number, t.Floors)
+                        : new TowerEntity(t.Number, t.Floors))
                     .ToList()
             ))
             .ForMember(dest => dest.Name,        opt => opt.Ignore())
@@ -51,7 +51,7 @@ public static class PhysicalStructureMapper
             ))
             .ForMember(dest => dest.Towers,         opt => opt.MapFrom(src =>
                 src.Towers
-                    .Select(t => new TowerDto { Id = t.Id, Number = t.Number })
+                    .Select(t => new TowerDto { Id = t.Id, Number = t.Number, Floors = t.Floors })
                     .ToList()
             ));
     }

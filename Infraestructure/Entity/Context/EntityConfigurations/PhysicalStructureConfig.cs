@@ -115,6 +115,10 @@ public class PhysicalStructureConfig :IEntityTypeConfiguration<PhysicalStructure
                 .HasColumnName("Number")
                 .IsRequired()
                 .HasMaxLength(20);
+
+            towerBuilder.Property(t => t.Floors)
+                .HasColumnName("Floors")
+                .IsRequired();
         });
 
     }

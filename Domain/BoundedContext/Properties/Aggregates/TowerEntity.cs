@@ -12,18 +12,22 @@ public class TowerEntity : Entity
     public TowerEntity() { }
 
     /// <summary>Constructor de negocio (nueva torre).</summary>
-    public TowerEntity(string number) : base()
+    public TowerEntity(string number, int floors) : base()
     {
         ValidateNumber(number);
+        ValidateFloors(floors);
         Number = number;
+        Floors = floors;
     }
 
     /// <summary>Constructor para reconstrucción (torre existente con Id conocido).</summary>
-    public TowerEntity(Guid id, string number) : base()
+    public TowerEntity(Guid id, string number, int floors) : base()
     {
         ValidateNumber(number);
+        ValidateFloors(floors);
         Id = id;
         Number = number;
+        Floors = floors;
     }
 
     private static void ValidateNumber(string number)
@@ -35,19 +39,24 @@ public class TowerEntity : Entity
             throw new DomainException("El número de la torre no puede exceder los 20 caracteres.");
     }
 
+    private static void ValidateFloors(int floors)
+    {
+        if (floors <= 0)
+            throw new DomainException("El número de pisos debe ser mayor a 0.");
+    }
+
     public string Number { get; private set; }
+    public int Floors { get; private set; }
 
     /// <summary>
-    /// Actualiza el número de la torre con validación de negocio.
+    /// Actualiza la torre con validación de negocio.
     /// </summary>
-    public void UpdateNumber(string number)
+    public void Update(string number, int floors)
     {
-        if (string.IsNullOrWhiteSpace(number))
-            throw new DomainException("El número de la torre es obligatorio.");
-
-        if (number.Length > 20)
-            throw new DomainException("El número de la torre no puede exceder los 20 caracteres.");
+        ValidateNumber(number);
+        ValidateFloors(floors);
 
         Number = number;
+        Floors = floors;
     }
 }

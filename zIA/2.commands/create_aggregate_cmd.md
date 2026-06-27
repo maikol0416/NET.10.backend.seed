@@ -52,6 +52,27 @@ Antes de generar ningún archivo, **pregunta al usuario** lo siguiente y espera 
          · Cost        : decimal : si
 ```
 
+### 1.3b — Entidades Hijas (Child Entities)
+```
+4b. ¿El agregado contiene Entidades hijas?
+    (A diferencia de los Value Objects, las Entidades hijas heredan de Entity
+    y tienen identidad propia — Id, Status, CreatedAt, UpdateAt)
+    
+    Para cada una indica:
+      a) Nombre de la Entidad (en Lenguaje Ubicuo), con sufijo Entity
+      b) Relación: siempre OwnsMany (colección)
+      c) Campos de la Entidad con su tipo y si son requeridos
+      d) Reglas de validación específicas para cada campo
+    
+    Ejemplo:
+      - TowerEntity [OwnsMany]
+          · Number : string : si (max 20 chars)
+          · Floors : int    : si (mayor a 0)
+      - CommonAreaEntity [OwnsMany]
+          · Name        : string : si (max 150 chars)
+          · Description  : string : si (max 500 chars)
+```
+
 ### 1.4 — Reglas de Invarianza
 ```
 5. Define las reglas de invarianza del agregado (validaciones en ExcecuteDomainInvariants):
@@ -101,6 +122,7 @@ Invariantes:
 Archivos que se crearán:
   ✅ Domain/BoundedContext/{BC}/Aggregates/{Nombre}Agg.cs
   ✅ Domain/BoundedContext/{BC}/Aggregates/{VO}ValueObject.cs  (por cada VO)
+  ✅ Domain/BoundedContext/{BC}/Aggregates/{Entity}Entity.cs    (por cada Entidad hija)
   ✅ Domain/BoundedContext/{BC}/Events/DomainEvents.cs
   ✅ Domain/Ports/Repository/I{Nombre}Repository.cs
   ✅ Domain/Ports/Repository/I{Nombre}ReadOnlyRepository.cs
@@ -140,6 +162,7 @@ Genera **todos** los archivos en el orden indicado abajo. Usa los **templates de
 |---|---|---|---|
 | 1 | Domain | `Domain/BoundedContext/{BC}/Aggregates/{Nombre}Agg.cs` | Aggregate Roots |
 | 2 | Domain | `Domain/BoundedContext/{BC}/Aggregates/{VO}ValueObject.cs` _(por cada VO)_ | Value Objects |
+| 2b | Domain | `Domain/BoundedContext/{BC}/Aggregates/{Entity}Entity.cs` _(por cada Entidad hija)_ | Entidades Hijas |
 | 3 | Domain | `Domain/BoundedContext/{BC}/Events/DomainEvents.cs` | Domain Events |
 | 4 | Domain/Ports | `Domain/Ports/Repository/I{Nombre}Repository.cs` | Repositorios de Escritura |
 | 5 | Domain/Ports | `Domain/Ports/Repository/I{Nombre}ReadOnlyRepository.cs` | Repositorios de Solo Lectura |
@@ -208,10 +231,15 @@ Antes de entregar el código generado, el agente debe verificar internamente:
 - [ ] Todas las propiedades del dominio tienen `get; private set;` (ningún setter público)
 - [ ] Todos los VOs son `record : ValueObject` con Guard Clauses en el constructor
 - [ ] `I{Nombre}Repository` e `I{Nombre}ReadOnlyRepository` están en `Domain/Ports/Repository/`
+- [ ] Cada Entidad hija hereda de `Entity` (NO de `AggregateRoot`) y tiene sufijo `Entity`
+- [ ] Cada Entidad hija tiene constructor vacío para ORM, constructor de negocio y constructor de reconstrucción (con `Guid id`)
+- [ ] Cada Entidad hija tiene métodos de validación privados estáticos y un método `Update(...)`
+- [ ] El Aggregate Root tiene un método `Update{Colección}(IEnumerable<{Entity}>)` por cada colección de entidades hijas
 
 **Infraestructura:**
 - [ ] El Fluent API mapea `Status`, `CreatedAt`, `UpdateAt` (campos de `Entity`)
 - [ ] Cada VO tiene `ToTable`, `WithOwner().HasForeignKey(...)`, `HasKey("Id")`
+- [ ] Cada Entidad hija en OwnsMany tiene `ToTable`, `WithOwner().HasForeignKey(...)`, `Property(t => t.Id).ValueGeneratedNever()`, `HasKey(t => t.Id)`, y mapeo de `Status`, `CreatedAt`, `UpdateAt`
 - [ ] El DbSet y `ApplyConfiguration` se agregan en `EntityDBSets.cs` (NO en EntityDbContext.cs)
 - [ ] El repositorio de escritura implementa `BaseRepositiry<TAgg>` e `I{Nombre}Repository`
 - [ ] El repositorio de lectura implementa `BaseReadOnlyRepository<TAgg>` e `I{Nombre}ReadOnlyRepository`
