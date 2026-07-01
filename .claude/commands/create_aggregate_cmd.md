@@ -73,6 +73,30 @@ Antes de generar ningún archivo, **pregunta al usuario** lo siguiente y espera 
           · Description  : string : si (max 500 chars)
 ```
 
+### 1.3c — Entidades Anidadas (Entity dentro de otra Entity hija)
+```
+4c. ¿Alguna de las Entidades hijas del punto 1.3b tiene a su vez su propia
+    colección de Entidades (3 niveles: Agregado → Entity → Entity)?
+    (Ejemplo real del proyecto: PhysicalStructureAgg → TowerEntity → ApartmentEntity)
+
+    Si la respuesta es sí, para cada Entidad anidada indica:
+      a) Nombre de la Entidad anidada (con sufijo Entity)
+      b) A qué Entidad hija pertenece (la "intermedia")
+      c) Campos de la Entidad anidada con su tipo y si son requeridos
+      d) Reglas de validación específicas para cada campo
+
+    Ejemplo:
+      - ApartmentEntity [OwnsMany dentro de TowerEntity]
+          · Number  : string : si
+          · Size    : string : si
+          · IdOwner : Guid   : si (no puede ser Guid.Empty)
+
+    ⚠️ Consulta la sección "Entidades Anidadas (Entity dentro de otra Entity)"
+    del skill — requiere: método Update{ColecciónNieta} en la Entidad intermedia,
+    .ThenInclude() en el repositorio, OwnsMany anidado en Fluent API,
+    y .Select() anidado en el Mapper.
+```
+
 ### 1.4 — Reglas de Invarianza
 ```
 5. Define las reglas de invarianza del agregado (validaciones en ExcecuteDomainInvariants):
@@ -123,11 +147,13 @@ Archivos que se crearán:
   ✅ Domain/BoundedContext/{BC}/Aggregates/{Nombre}Agg.cs
   ✅ Domain/BoundedContext/{BC}/Aggregates/{VO}ValueObject.cs  (por cada VO)
   ✅ Domain/BoundedContext/{BC}/Aggregates/{Entity}Entity.cs    (por cada Entidad hija)
+  ✅ Domain/BoundedContext/{BC}/Aggregates/{NietaEntity}.cs     (por cada Entidad anidada — ver 1.3c)
   ✅ Domain/BoundedContext/{BC}/Events/DomainEvents.cs
   ✅ Domain/Ports/Repository/I{Nombre}Repository.cs
   ✅ Domain/Ports/Repository/I{Nombre}ReadOnlyRepository.cs
   ✅ Application/{Nombre}/Dtos/{Nombre}Dto.cs
   ✅ Application/{Nombre}/Dtos/{VO}Dto.cs                       (por cada VO con OwnsMany — archivo separado)
+  ✅ Application/{Nombre}/Dtos/{NietaEntity}Dto.cs              (por cada Entidad anidada — archivo separado)
   ✅ Application/{Nombre}/Mapper/{Nombre}Mapper.cs
   ✅ Application/{Nombre}/Service/I{Nombre}Service.cs
   ✅ Application/{Nombre}/Service/{Nombre}Service.cs
@@ -139,11 +165,17 @@ Archivos que se crearán:
   ✅ Infraestructure/Entity/Repository/{BC}/{Nombre}Repository.cs
   ✅ Infraestructure/Entity/Repository/{BC}/{Nombre}ReadOnlyRepository.cs
   ✅ Api/Controllers/v1/{Nombre}Controller.cs
+  ✅ Test/{BC}/{Nombre}AggTests.cs
+  ✅ Test/{BC}/{VO}ValueObjectTests.cs                          (por cada VO)
+  ✅ Test/{BC}/{Entity}EntityTests.cs                           (por cada Entidad hija y cada Entidad anidada)
 
 Archivos a MODIFICAR:
   ⚠️  Infraestructure/Entity/Context/EntityDBSets.cs            (DbSet<> + ApplyConfiguration)
   ⚠️  Infraestructure/Entity/DependencyInjection.cs             (AddScoped repositorio escritura + lectura)
   ⚠️  Application/DependencyInyection.cs                        (RegisterMediatrAbstractService + ReadOnly + Validator)
+
+ℹ️  El Controller hereda automáticamente create/update/delete/getAll/getById/getPaginated
+    de BaseController — no se generan endpoints adicionales salvo que el caso de uso lo requiera.
 
 ¿Confirmas la generación? (sí/no)
 ```
@@ -163,11 +195,13 @@ Genera **todos** los archivos en el orden indicado abajo. Usa los **templates de
 | 1 | Domain | `Domain/BoundedContext/{BC}/Aggregates/{Nombre}Agg.cs` | Aggregate Roots |
 | 2 | Domain | `Domain/BoundedContext/{BC}/Aggregates/{VO}ValueObject.cs` _(por cada VO)_ | Value Objects |
 | 2b | Domain | `Domain/BoundedContext/{BC}/Aggregates/{Entity}Entity.cs` _(por cada Entidad hija)_ | Entidades Hijas |
+| 2c | Domain | `Domain/BoundedContext/{BC}/Aggregates/{NietaEntity}.cs` _(por cada Entidad anidada, si aplica 1.3c)_ | Entidades Anidadas (Entity dentro de otra Entity) |
 | 3 | Domain | `Domain/BoundedContext/{BC}/Events/DomainEvents.cs` | Domain Events |
 | 4 | Domain/Ports | `Domain/Ports/Repository/I{Nombre}Repository.cs` | Repositorios de Escritura |
 | 5 | Domain/Ports | `Domain/Ports/Repository/I{Nombre}ReadOnlyRepository.cs` | Repositorios de Solo Lectura |
 | 6 | Application | `Application/{Nombre}/Dtos/{Nombre}Dto.cs` | DTOs |
 | 7 | Application | `Application/{Nombre}/Dtos/{VO}Dto.cs` _(por cada VO OwnsMany)_ | DTOs |
+| 7b | Application | `Application/{Nombre}/Dtos/{NietaEntity}Dto.cs` _(por cada Entidad anidada, si aplica 1.3c)_ | Entidades Anidadas |
 | 8 | Application | `Application/{Nombre}/Mapper/{Nombre}Mapper.cs` | Mapper (AutoMapper) |
 | 9 | Application | `Application/{Nombre}/Service/I{Nombre}Service.cs` | Application Services — Command Side |
 | 10 | Application | `Application/{Nombre}/Service/{Nombre}Service.cs` | Application Services — Command Side |
@@ -179,6 +213,9 @@ Genera **todos** los archivos en el orden indicado abajo. Usa los **templates de
 | 16 | Infraestructure | `Infraestructure/Entity/Repository/{BC}/{Nombre}Repository.cs` | Repositorios de Escritura |
 | 17 | Infraestructure | `Infraestructure/Entity/Repository/{BC}/{Nombre}ReadOnlyRepository.cs` | Repositorios de Solo Lectura |
 | 18 | Api | `Api/Controllers/v1/{Nombre}Controller.cs` | Controllers |
+| 19 | Test | `Test/{BC}/{Nombre}AggTests.cs` | Tests Unitarios de Dominio |
+| 20 | Test | `Test/{BC}/{VO}ValueObjectTests.cs` _(por cada VO)_ | Tests Unitarios de Dominio |
+| 21 | Test | `Test/{BC}/{Entity}EntityTests.cs` _(por cada Entidad hija y cada Entidad anidada)_ | Tests Unitarios de Dominio |
 
 ---
 
@@ -235,11 +272,14 @@ Antes de entregar el código generado, el agente debe verificar internamente:
 - [ ] Cada Entidad hija tiene constructor vacío para ORM, constructor de negocio y constructor de reconstrucción (con `Guid id`)
 - [ ] Cada Entidad hija tiene métodos de validación privados estáticos y un método `Update(...)`
 - [ ] El Aggregate Root tiene un método `Update{Colección}(IEnumerable<{Entity}>)` por cada colección de entidades hijas
+- [ ] Si hay Entidades anidadas (1.3c): la Entidad intermedia tiene su propio método `Update{ColecciónNieta}(IEnumerable<{Nieta}Entity>)`, y el Aggregate Root lo invoca al reconstruir cada entidad intermedia en su `Update{Colección}`
 
 **Infraestructura:**
 - [ ] El Fluent API mapea `Status`, `CreatedAt`, `UpdateAt` (campos de `Entity`)
 - [ ] Cada VO tiene `ToTable`, `WithOwner().HasForeignKey(...)`, `HasKey("Id")`
 - [ ] Cada Entidad hija en OwnsMany tiene `ToTable`, `WithOwner().HasForeignKey(...)`, `Property(t => t.Id).ValueGeneratedNever()`, `HasKey(t => t.Id)`, y mapeo de `Status`, `CreatedAt`, `UpdateAt`
+- [ ] Si hay Entidades anidadas: el `OwnsMany` de la Entidad nieta está anidado **dentro** del `OwnsMany` de la Entidad intermedia (mismas reglas de `ToTable`/`WithOwner`/`HasKey`/`Status`/`CreatedAt`/`UpdateAt`)
+- [ ] El repositorio de escritura usa `.ThenInclude()` por cada nivel de colección anidada en su `UpdateAsync` sobrecargado
 - [ ] El DbSet y `ApplyConfiguration` se agregan en `EntityDBSets.cs` (NO en EntityDbContext.cs)
 - [ ] El repositorio de escritura implementa `BaseRepositiry<TAgg>` e `I{Nombre}Repository`
 - [ ] El repositorio de lectura implementa `BaseReadOnlyRepository<TAgg>` e `I{Nombre}ReadOnlyRepository`
@@ -247,14 +287,21 @@ Antes de entregar el código generado, el agente debe verificar internamente:
 
 **Application:**
 - [ ] El DTO de VO con OwnsMany está en **archivo separado** (`{VO}Dto.cs`)
+- [ ] El DTO de Entidad anidada está en **archivo separado** (`{NietaEntity}Dto.cs`) y referenciado como `List<{NietaEntity}Dto>` en el DTO de la Entidad intermedia
 - [ ] El Mapper usa `ConstructUsing` para DTO → Agg (respetando el constructor de negocio)
-- [ ] El Mapper usa `ForMember` + `Select()` inline para Agg → DTO (incluyendo colecciones OwnsMany)
+- [ ] El Mapper usa `ForMember` + `Select()` inline para Agg → DTO (incluyendo colecciones OwnsMany, con `.Select()` anidado si hay Entidades anidadas)
 - [ ] `{Nombre}ReadOnlyService` reutiliza `{Nombre}Mapper.Expresion(cnf)` (mismo mapper)
 - [ ] `RegisterMediatrAbstractService` Y `RegisterMediatrAbstractReadOnlyService` registrados en Application DI
 - [ ] Validator registrado en `RegisterValidators`
+- [ ] Si alguna regla del Validator solo aplica a Update (no a Create), usa `When`/`Unless` en vez de duplicar el Validator
 
 **API:**
-- [ ] El Controller hereda de `BaseController<{Nombre}Agg, {Nombre}Dto>`
+- [ ] El Controller hereda de `BaseController<{Nombre}Agg, {Nombre}Dto>` (obtiene create/update/delete/getAll/getById/getPaginated automáticamente — no declarar endpoints duplicados)
+
+**Tests:**
+- [ ] Existe `Test/{BC}/{Nombre}AggTests.cs` cubriendo invariantes del Aggregate Root
+- [ ] Existe `Test/{BC}/{VO}ValueObjectTests.cs` por cada VO, cubriendo Guard Clauses e igualdad estructural
+- [ ] Existe `Test/{BC}/{Entity}EntityTests.cs` por cada Entidad hija y cada Entidad anidada, cubriendo construcción válida, Guard Clauses y `Update(...)`
 
 **Migración:**
 - [ ] Se indica el comando de migración EF al usuario

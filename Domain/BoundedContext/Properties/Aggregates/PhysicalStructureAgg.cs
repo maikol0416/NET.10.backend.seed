@@ -51,7 +51,9 @@ public class PhysicalStructureAgg : AggregateRoot
         {
             foreach (var incomingTower in incomingTowers)
             {
-                Towers.Add(new TowerEntity(incomingTower.Number, incomingTower.Floors));
+                var newTower = new TowerEntity(incomingTower.Number, incomingTower.Floors);
+                newTower.UpdateApartments(incomingTower.Apartments);
+                Towers.Add(newTower);
             }
         }
     }

@@ -25,8 +25,19 @@ public static class PhysicalStructureMapper
                     .ToList(),
                 src.Towers
                     .Select(t => t.Id.HasValue && t.Id.Value != Guid.Empty
-                        ? new TowerEntity(t.Id.Value, t.Number, t.Floors)
-                        : new TowerEntity(t.Number, t.Floors))
+                        ? new TowerEntity(
+                            t.Id.Value, 
+                            t.Number, 
+                            t.Floors, 
+                            t.Apartments != null ? t.Apartments.Select(a => a.Id.HasValue && a.Id.Value != Guid.Empty 
+                                ? new ApartmentEntity(a.Id.Value, a.Number, a.Size, a.IdOwner) 
+                                : new ApartmentEntity(a.Number, a.Size, a.IdOwner)).ToList() : new List<ApartmentEntity>())
+                        : new TowerEntity(
+                            t.Number, 
+                            t.Floors,
+                            t.Apartments != null ? t.Apartments.Select(a => a.Id.HasValue && a.Id.Value != Guid.Empty 
+                                ? new ApartmentEntity(a.Id.Value, a.Number, a.Size, a.IdOwner) 
+                                : new ApartmentEntity(a.Number, a.Size, a.IdOwner)).ToList() : new List<ApartmentEntity>()))
                     .ToList()
             ))
             .ForMember(dest => dest.Name,        opt => opt.Ignore())
@@ -51,7 +62,19 @@ public static class PhysicalStructureMapper
             ))
             .ForMember(dest => dest.Towers,         opt => opt.MapFrom(src =>
                 src.Towers
-                    .Select(t => new TowerDto { Id = t.Id, Number = t.Number, Floors = t.Floors })
+                    .Select(t => new TowerDto 
+                    { 
+                        Id = t.Id, 
+                        Number = t.Number, 
+                        Floors = t.Floors,
+                        Apartments = t.Apartments != null ? t.Apartments.Select(a => new ApartmentDto 
+                        { 
+                            Id = a.Id, 
+                            Number = a.Number, 
+                            Size = a.Size, 
+                            IdOwner = a.IdOwner 
+                        }).ToList() : new List<ApartmentDto>()
+                    })
                     .ToList()
             ));
     }

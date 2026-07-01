@@ -12,22 +12,24 @@ public class TowerEntity : Entity
     public TowerEntity() { }
 
     /// <summary>Constructor de negocio (nueva torre).</summary>
-    public TowerEntity(string number, int floors) : base()
+    public TowerEntity(string number, int floors, List<ApartmentEntity> apartments = null) : base()
     {
         ValidateNumber(number);
         ValidateFloors(floors);
         Number = number;
         Floors = floors;
+        Apartments = apartments ?? new List<ApartmentEntity>();
     }
 
     /// <summary>Constructor para reconstrucción (torre existente con Id conocido).</summary>
-    public TowerEntity(Guid id, string number, int floors) : base()
+    public TowerEntity(Guid id, string number, int floors, List<ApartmentEntity> apartments = null) : base()
     {
         ValidateNumber(number);
         ValidateFloors(floors);
         Id = id;
         Number = number;
         Floors = floors;
+        Apartments = apartments ?? new List<ApartmentEntity>();
     }
 
     private static void ValidateNumber(string number)
@@ -47,6 +49,7 @@ public class TowerEntity : Entity
 
     public string Number { get; private set; }
     public int Floors { get; private set; }
+    public List<ApartmentEntity> Apartments { get; private set; }
 
     /// <summary>
     /// Actualiza la torre con validación de negocio.
@@ -58,5 +61,17 @@ public class TowerEntity : Entity
 
         Number = number;
         Floors = floors;
+    }
+
+    public void UpdateApartments(IEnumerable<ApartmentEntity> incomingApartments)
+    {
+        Apartments.Clear();
+        if (incomingApartments != null)
+        {
+            foreach (var inc in incomingApartments)
+            {
+                Apartments.Add(new ApartmentEntity(inc.Number, inc.Size, inc.IdOwner));
+            }
+        }
     }
 }

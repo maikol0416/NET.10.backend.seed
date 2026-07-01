@@ -24,6 +24,7 @@ public class PhysicalStructureRepository: BaseRepositiry<PhysicalStructureAgg>, 
         var tracked = await entity
             .Include(p => p.CommonsAreas)
             .Include(p => p.Towers)
+                .ThenInclude(t => t.Apartments)
             .FirstOrDefaultAsync(p => p.Id == ent.Id)
             ?? throw new Exception($"No se encontró la estructura física con Id {ent.Id} para actualizar.");
 

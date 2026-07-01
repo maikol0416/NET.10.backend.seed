@@ -119,6 +119,38 @@ public class PhysicalStructureConfig :IEntityTypeConfiguration<PhysicalStructure
             towerBuilder.Property(t => t.Floors)
                 .HasColumnName("Floors")
                 .IsRequired();
+
+            towerBuilder.OwnsMany(t => t.Apartments, apartmentBuilder => 
+            {
+                apartmentBuilder.ToTable("Apartment");
+                apartmentBuilder.WithOwner().HasForeignKey("TowerId");
+                apartmentBuilder.Property(a => a.Id).ValueGeneratedNever();
+                apartmentBuilder.HasKey(a => a.Id);
+
+                apartmentBuilder.Property(a => a.Status)
+                    .IsRequired()
+                    .HasMaxLength(10);
+
+                apartmentBuilder.Property(a => a.CreatedAt)
+                    .IsRequired();
+
+                apartmentBuilder.Property(a => a.UpdateAt)
+                    .IsRequired(false);
+
+                apartmentBuilder.Property(a => a.Number)
+                    .HasColumnName("Number")
+                    .IsRequired()
+                    .HasMaxLength(20);
+
+                apartmentBuilder.Property(a => a.Size)
+                    .HasColumnName("Size")
+                    .IsRequired()
+                    .HasMaxLength(50);
+
+                apartmentBuilder.Property(a => a.IdOwner)
+                    .HasColumnName("IdOwner")
+                    .IsRequired();
+            });
         });
 
     }

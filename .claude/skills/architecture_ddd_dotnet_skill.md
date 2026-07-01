@@ -100,14 +100,20 @@ NET.10.backend.seed.slnx
 │   │   └── DependencyInjection.cs
 │   └── Migrations/
 │
-└── Api/
-    ├── Program.cs
-    └── Controllers/
-        ├── Base/
-        │   ├── BaseController.cs
-        │   └── ResponseApi.cs
-        └── v1/
-            └── PhysicalStructureController.cs
+├── Api/
+│   ├── Program.cs
+│   └── Controllers/
+│       ├── Base/
+│       │   ├── BaseController.cs
+│       │   └── ResponseApi.cs
+│       └── v1/
+│           └── PhysicalStructureController.cs
+│
+└── Test/                                       # Tests unitarios de Dominio (xUnit + FluentAssertions)
+    └── Properties/                             # Un subdirectorio por Bounded Context (espejo de Domain/BoundedContext)
+        ├── PhysicalStructureAggTests.cs
+        ├── LocationValueObjectTests.cs
+        └── ApartmentEntityTests.cs
 ```
 
 ---
@@ -547,6 +553,184 @@ public class TowerEntity : Entity
 
 ---
 
+## Entidades Anidadas (Entity dentro de otra Entity)
+
+### Teoría
+
+En agregados más grandes, una Entidad hija puede a su vez tener su propia colección de Entidades hijas (3 niveles: `Agg → Entity → Entity`). Ejemplo real del proyecto: `PhysicalStructureAgg → TowerEntity → ApartmentEntity` (un apartamento pertenece a una torre, una torre pertenece a la estructura física).
+
+Reglas clave (extienden las de Entidades Hijas):
+- La Entidad de nivel intermedio (`TowerEntity`) sigue las mismas reglas que cualquier Entidad hija, **más** un método `Update{ColecciónNieta}(IEnumerable<{Nieta}Entity>)` propio, análogo a `Update{Colección}` del Aggregate Root.
+- El Aggregate Root **no** gestiona directamente la colección nieta. Su método `Update{Colección}` (ver sección Aggregate Roots) es responsable de invocar el `Update{ColecciónNieta}` de cada entidad intermedia recién creada.
+- El repositorio de escritura debe usar `.Include().ThenInclude()` para cargar el grafo completo antes de delegar la actualización al agregado.
+- El Fluent API anida un `OwnsMany` dentro de otro `OwnsMany` (ver Entity Configuration).
+- El Mapper anida el `.Select()` de la colección nieta dentro del `.Select()` de la colección intermedia, tanto en dirección DTO → Agregado como Agregado → DTO.
+
+### Artefactos
+
+| Capa | Ruta | Descripción |
+|---|---|---|
+| Domain | `Domain/BoundedContext/{BC}/Aggregates/{Nieta}Entity.cs` | Entidad de nivel más profundo, sigue el template de Entidades Hijas |
+
+### C# ejemplo concreto — TowerEntity con colección de ApartmentEntity
+
+```csharp
+public class TowerEntity : Entity
+{
+    public TowerEntity() { }
+
+    public TowerEntity(string number, int floors, List<ApartmentEntity> apartments = null) : base()
+    {
+        ValidateNumber(number);
+        ValidateFloors(floors);
+        Number = number;
+        Floors = floors;
+        Apartments = apartments ?? new List<ApartmentEntity>();
+    }
+
+    public TowerEntity(Guid id, string number, int floors, List<ApartmentEntity> apartments = null) : base()
+    {
+        ValidateNumber(number);
+        ValidateFloors(floors);
+        Id = id;
+        Number = number;
+        Floors = floors;
+        Apartments = apartments ?? new List<ApartmentEntity>();
+    }
+
+    public string Number { get; private set; }
+    public int Floors { get; private set; }
+    public List<ApartmentEntity> Apartments { get; private set; }
+
+    public void Update(string number, int floors)
+    {
+        ValidateNumber(number);
+        ValidateFloors(floors);
+        Number = number;
+        Floors = floors;
+    }
+
+    // Método propio de sincronización de la colección nieta (mismo patrón que Update{Colección} del Agg Root)
+    public void UpdateApartments(IEnumerable<ApartmentEntity> incomingApartments)
+    {
+        Apartments.Clear();
+        if (incomingApartments != null)
+        {
+            foreach (var inc in incomingApartments)
+            {
+                Apartments.Add(new ApartmentEntity(inc.Number, inc.Size, inc.IdOwner));
+            }
+        }
+    }
+}
+```
+
+### El Aggregate Root delega en la Entidad intermedia
+
+```csharp
+public void UpdateTowers(IEnumerable<TowerEntity> incomingTowers)
+{
+    Towers.Clear();
+    if (incomingTowers != null)
+    {
+        foreach (var incomingTower in incomingTowers)
+        {
+            var newTower = new TowerEntity(incomingTower.Number, incomingTower.Floors);
+            newTower.UpdateApartments(incomingTower.Apartments); // delega la colección nieta
+            Towers.Add(newTower);
+        }
+    }
+}
+```
+
+### Repositorio — `ThenInclude` para cargar el grafo completo
+
+```csharp
+public override async Task<PhysicalStructureAgg> UpdateAsync(PhysicalStructureAgg ent)
+{
+    var tracked = await entity
+        .Include(p => p.CommonsAreas)
+        .Include(p => p.Towers)
+            .ThenInclude(t => t.Apartments)   // ⚠️ obligatorio para colecciones nietas
+        .FirstOrDefaultAsync(p => p.Id == ent.Id)
+        ?? throw new Exception($"No se encontró la estructura física con Id {ent.Id} para actualizar.");
+
+    tracked.Update(ent.Name, ent.Nit, ent.UnitCount);
+    tracked.UpdateTowers(ent.Towers);
+    tracked.UpdateCommonsAreas(ent.CommonsAreas);
+
+    await MainContext.SaveChangesAsync();
+    return tracked;
+}
+```
+
+### Fluent API — `OwnsMany` anidado dentro de `OwnsMany`
+
+```csharp
+builder.OwnsMany(p => p.Towers, towerBuilder =>
+{
+    towerBuilder.ToTable("Tower");
+    towerBuilder.WithOwner().HasForeignKey("PhysicalStructureId");
+    towerBuilder.Property(t => t.Id).ValueGeneratedNever();
+    towerBuilder.HasKey(t => t.Id);
+
+    // ... Status, CreatedAt, UpdateAt, Number, Floors ...
+
+    // Colección nieta anidada dentro de la colección de Towers
+    towerBuilder.OwnsMany(t => t.Apartments, apartmentBuilder =>
+    {
+        apartmentBuilder.ToTable("Apartment");
+        apartmentBuilder.WithOwner().HasForeignKey("TowerId");
+        apartmentBuilder.Property(a => a.Id).ValueGeneratedNever();
+        apartmentBuilder.HasKey(a => a.Id);
+
+        apartmentBuilder.Property(a => a.Status).IsRequired().HasMaxLength(10);
+        apartmentBuilder.Property(a => a.CreatedAt).IsRequired();
+        apartmentBuilder.Property(a => a.UpdateAt).IsRequired(false);
+
+        apartmentBuilder.Property(a => a.Number).HasColumnName("Number").IsRequired().HasMaxLength(20);
+        apartmentBuilder.Property(a => a.Size).HasColumnName("Size").IsRequired().HasMaxLength(50);
+        apartmentBuilder.Property(a => a.IdOwner).HasColumnName("IdOwner").IsRequired();
+    });
+});
+```
+
+### DTO y Mapper anidados
+
+El DTO intermedio (`TowerDto`) incluye la lista de DTOs nietos, y el Mapper anida el `.Select()`:
+
+```csharp
+public class TowerDto
+{
+    public Guid? Id { get; set; }
+    public string Number { get; set; }
+    public int Floors { get; set; }
+    public List<ApartmentDto> Apartments { get; set; }
+}
+```
+
+```csharp
+// DTO → Aggregate: dentro del .Select() de Towers, otro .Select() para Apartments
+src.Towers.Select(t => t.Id.HasValue && t.Id.Value != Guid.Empty
+    ? new TowerEntity(t.Id.Value, t.Number, t.Floors,
+        t.Apartments?.Select(a => a.Id.HasValue && a.Id.Value != Guid.Empty
+            ? new ApartmentEntity(a.Id.Value, a.Number, a.Size, a.IdOwner)
+            : new ApartmentEntity(a.Number, a.Size, a.IdOwner)).ToList() ?? new List<ApartmentEntity>())
+    : new TowerEntity(t.Number, t.Floors, /* ... mismo patrón ... */))
+    .ToList()
+
+// Aggregate → DTO: mismo anidamiento en sentido inverso
+.ForMember(dest => dest.Towers, opt => opt.MapFrom(src => src.Towers.Select(t => new TowerDto
+{
+    Id = t.Id, Number = t.Number, Floors = t.Floors,
+    Apartments = t.Apartments != null
+        ? t.Apartments.Select(a => new ApartmentDto { Id = a.Id, Number = a.Number, Size = a.Size, IdOwner = a.IdOwner }).ToList()
+        : new List<ApartmentDto>()
+}).ToList()));
+```
+
+---
+
 ## Domain Events
 
 ### Teoría
@@ -677,6 +861,7 @@ public override async Task<PhysicalStructureAgg> UpdateAsync(PhysicalStructureAg
     var tracked = await entity
         .Include(p => p.CommonsAreas)
         .Include(p => p.Towers)
+            .ThenInclude(t => t.Apartments)   // colección nieta: ver sección "Entidades Anidadas"
         .FirstOrDefaultAsync(p => p.Id == ent.Id)
         ?? throw new Exception($"No se encontró la estructura física con Id {ent.Id} para actualizar.");
 
@@ -688,6 +873,8 @@ public override async Task<PhysicalStructureAgg> UpdateAsync(PhysicalStructureAg
     return tracked;
 }
 ```
+
+> Si una colección tiene a su vez colecciones propias (Entity dentro de Entity), agrega un `.ThenInclude()` por cada nivel — de lo contrario EF Core no cargará el grafo completo y `Update{ColecciónNieta}` operará sobre una colección vacía, borrando los datos existentes al guardar. Ver **Entidades Anidadas (Entity dentro de otra Entity)**.
 
 ---
 
@@ -1093,6 +1280,21 @@ public class {Nombre}Validator : AbstractValidator<{Nombre}Dto>
 }
 ```
 
+### Reglas condicionales — Create vs. Update
+
+El mismo `{Nombre}Validator` se ejecuta tanto en `POST create` como en `PUT update` (el `BaseController` reutiliza `IValidator<DTO>` para ambos). Si una regla solo aplica a uno de los dos casos (ej. `Id` es obligatorio en Update pero no debe enviarse en Create), usa `When`/`Unless` en vez de crear un Validator separado:
+
+```csharp
+// El Id solo es obligatorio cuando el DTO ya trae un valor distinto de default
+// (heurística simple: si el caller no puede distinguir Create de Update por otro medio,
+// evalúa exponer el contexto explícitamente en el DTO o usar RuleSet).
+RuleFor(x => x.Id)
+    .NotEmpty()
+    .WithErrorCode("IdRequired")
+    .WithMessage("El Id es obligatorio para actualizar.")
+    .When(x => x.Id.HasValue && x.Id != Guid.Empty);
+```
+
 ### Registro DI — `Application/DependencyInyection.cs`
 
 Agregar en `RegisterValidators`:
@@ -1375,18 +1577,97 @@ public class PhysicalStructureController
 ```csharp
 // Api/Controllers/Base/BaseController.cs
 // Clase base genérica que todos los controllers concretos heredan.
-// Provee los 3 endpoints estándar con validación y respuesta unificada.
+// Provee 6 endpoints estándar con validación y respuesta unificada.
+// Requiere autenticación (no es anónimo).
 
-[AllowAnonymous]
+[Authorize]
 [ApiController]
 public abstract partial class BaseController<ENT, DTO> : ControllerBase
     where ENT : class, new()
     where DTO : class, new()
 {
-    // POST api/{Nombre}/create  → valida con FluentValidation → envía CreateCommand
-    // PUT  api/{Nombre}/update  → valida con FluentValidation → envía UpdateCommand
-    // DELETE api/{Nombre}/delete → envía DeleteCommand
+    // POST   api/{Nombre}/create        → valida con FluentValidation → envía CreateCommand
+    // PUT    api/{Nombre}/update        → valida con FluentValidation → envía UpdateCommand
+    // DELETE api/{Nombre}/delete        → envía DeleteCommand
+    // GET    api/{Nombre}/getAll        → envía GetAllQuery
+    // GET    api/{Nombre}/getById       → envía GetByIdQuery
+    // GET    api/{Nombre}/getPaginated  → envía GetPaginatedQuery (pageNumber, pageSize)
     // Toda respuesta exitosa se envuelve en: { Data: T, Status: true, Message: "..." }
+}
+```
+
+> ⚠️ El Controller concreto **nunca** necesita declarar estos 6 endpoints — vienen heredados. Solo se agregan endpoints propios cuando el caso de uso no encaja en Create/Update/Delete/GetAll/GetById/GetPaginated genéricos (poco común; si ocurre, evalúa primero si es un Command/Query específico antes de romper el patrón del Controller).
+
+---
+
+## Tests Unitarios de Dominio
+
+### Teoría
+
+Cada artefacto de Dominio nuevo (Aggregate Root, Value Object, Entidad hija) debe tener su clase de test correspondiente en el proyecto `Test/`, verificando invariantes/guard clauses y métodos de negocio — sin mocks, sin infraestructura, solo construyendo el objeto directamente y aseverando su estado.
+
+Reglas clave:
+- Un archivo de test por artefacto de dominio, ubicado en `Test/{BoundedContext}/{Nombre}Tests.cs`, namespace `Test.{BoundedContext}`.
+- Cubre como mínimo: construcción válida (happy path), cada Guard Clause / invariante con `[Theory]`/`[InlineData]` cuando aplique, y el método `Update(...)` si existe.
+- Para Value Objects, cubre también la igualdad estructural (dos instancias con los mismos valores son iguales, gracias a `record`).
+- Usa `FluentAssertions` (`.Should()...`) y `Xunit` (`[Fact]`, `[Theory]`).
+- No se testea el Mapper, el Repositorio ni el Controller a este nivel — esos se cubren con tests de integración si el proyecto los requiere.
+
+### Artefactos
+
+| Capa | Ruta | Descripción |
+|---|---|---|
+| Test | `Test/{BC}/{Nombre}AggTests.cs` | Tests del Aggregate Root |
+| Test | `Test/{BC}/{VO}ValueObjectTests.cs` | Tests de cada Value Object |
+| Test | `Test/{BC}/{Entity}EntityTests.cs` | Tests de cada Entidad hija (incluye Entidades anidadas) |
+
+### C# ejemplo concreto — ApartmentEntityTests
+
+```csharp
+using Domain.BoundedContext.Properties;
+using Domain.DomainShared;
+using FluentAssertions;
+using Xunit;
+
+namespace Test.Properties;
+
+public class ApartmentEntityTests
+{
+    [Fact]
+    public void Constructor_WithValidData_ShouldCreateSuccessfully()
+    {
+        var idOwner = Guid.NewGuid();
+        var apartment = new ApartmentEntity("101", "50m2", idOwner);
+
+        apartment.Number.Should().Be("101");
+        apartment.Size.Should().Be("50m2");
+        apartment.IdOwner.Should().Be(idOwner);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Constructor_WithInvalidNumber_ShouldThrowDomainException(string invalidNumber)
+    {
+        var idOwner = Guid.NewGuid();
+        var action = () => new ApartmentEntity(invalidNumber, "50m2", idOwner);
+        action.Should().ThrowExactly<DomainException>().WithMessage("*número*");
+    }
+
+    [Fact]
+    public void Update_WithValidData_ShouldUpdateFieldsSuccessfully()
+    {
+        var idOwner1 = Guid.NewGuid();
+        var idOwner2 = Guid.NewGuid();
+        var apartment = new ApartmentEntity("101", "50m2", idOwner1);
+
+        apartment.Update("102", "60m2", idOwner2);
+
+        apartment.Number.Should().Be("102");
+        apartment.Size.Should().Be("60m2");
+        apartment.IdOwner.Should().Be(idOwner2);
+    }
 }
 ```
 
