@@ -30,7 +30,6 @@ public class ApartmentEntityTests
     }
 
     [Theory]
-    [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
     public void Constructor_WithInvalidSize_ShouldThrowDomainException(string invalidSize)
@@ -41,10 +40,28 @@ public class ApartmentEntityTests
     }
 
     [Fact]
+    public void Constructor_WithNullSize_ShouldCreateSuccessfully()
+    {
+        // El tamaño es opcional: se completa después vía Update (ej. generación masiva por piso).
+        var apartment = new ApartmentEntity("101", null, Guid.NewGuid());
+
+        apartment.Size.Should().BeNull();
+    }
+
+    [Fact]
     public void Constructor_WithEmptyOwnerId_ShouldThrowDomainException()
     {
         var action = () => new ApartmentEntity("101", "50m2", Guid.Empty);
         action.Should().ThrowExactly<DomainException>().WithMessage("*propietario*");
+    }
+
+    [Fact]
+    public void Constructor_WithNullOwnerId_ShouldCreateSuccessfully()
+    {
+        // El propietario es opcional: se completa después vía Update (ej. generación masiva por piso).
+        var apartment = new ApartmentEntity("101", "50m2", null);
+
+        apartment.IdOwner.Should().BeNull();
     }
 
     [Fact]

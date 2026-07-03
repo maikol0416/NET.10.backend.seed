@@ -58,6 +58,34 @@ public class PhysicalStructureAgg : AggregateRoot
         }
     }
 
+    /// <summary>
+    /// Genera masivamente los apartamentos de una torre, distribuidos por piso.
+    /// El número de cada apartamento se compone del piso + un consecutivo por piso
+    /// (ej. piso 1 con 4 aptos por piso: 101, 102, 103, 104; piso 2: 201, 202, 203, 204).
+    /// Reemplaza cualquier apartamento existente en la torre — Size e IdOwner nacen
+    /// sin asignar y se completan después mediante ApartmentEntity.Update(...).
+    /// </summary>
+    public void AddMasiveApartment(string towerNumber, int apartmentsPerFloor)
+    {
+        if (apartmentsPerFloor <= 0)
+            throw new DomainException("La cantidad de apartamentos por piso debe ser mayor a cero.");
+
+        var tower = Towers.FirstOrDefault(t => t.Number == towerNumber)
+            ?? throw new DomainException($"No se encontró la torre '{towerNumber}' para generar apartamentos.");
+
+        var generatedApartments = new List<ApartmentEntity>();
+        for (var floor = 1; floor <= tower.Floors; floor++)
+        {
+            for (var sequence = 1; sequence <= apartmentsPerFloor; sequence++)
+            {
+                var apartmentNumber = (floor * 100 + sequence).ToString();
+                generatedApartments.Add(new ApartmentEntity(apartmentNumber));
+            }
+        }
+
+        tower.UpdateApartments(generatedApartments);
+    }
+
     public void UpdateCommonsAreas(IEnumerable<CommonAreaEntity> incomingCommonAreas)
     {
         CommonsAreas.Clear();

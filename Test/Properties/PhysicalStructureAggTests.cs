@@ -233,4 +233,85 @@ public class PhysicalStructureAggTests
            .WithMessage("*nombre*", "el nombre no puede ser vacío al actualizar.");
     }
 
+    // ─────────────────────────────────────────────
+    // Métodos de negocio — AddMasiveApartment
+    // ─────────────────────────────────────────────
+
+    [Fact]
+    public void AddMasiveApartment_WithValidData_ShouldGenerateApartmentsNumberedByFloor()
+    {
+        // Arrange — torre con 2 pisos, 4 aptos por piso
+        var towers = new List<TowerEntity> { new("Torre 1", 2) };
+        var agg = CreateValid(towers: towers);
+
+        // Act
+        agg.AddMasiveApartment("Torre 1", 4);
+
+        // Assert
+        var tower = agg.Towers.Single(t => t.Number == "Torre 1");
+        tower.Apartments.Should().HaveCount(8, "2 pisos x 4 aptos por piso.");
+        tower.Apartments.Select(a => a.Number).Should().BeEquivalentTo(
+            ["101", "102", "103", "104", "201", "202", "203", "204"]);
+    }
+
+    [Fact]
+    public void AddMasiveApartment_ShouldCreateApartmentsWithoutSizeOrOwner()
+    {
+        // Arrange
+        var towers = new List<TowerEntity> { new("Torre 1", 1) };
+        var agg = CreateValid(towers: towers);
+
+        // Act
+        agg.AddMasiveApartment("Torre 1", 2);
+
+        // Assert — Size e IdOwner se asignan después vía Update, no en la generación masiva.
+        var tower = agg.Towers.Single(t => t.Number == "Torre 1");
+        tower.Apartments.Should().OnlyContain(a => a.Size == null && a.IdOwner == null);
+    }
+
+    [Fact]
+    public void AddMasiveApartment_ShouldReplaceExistingApartments()
+    {
+        // Arrange — la torre ya tiene un apartamento manual
+        var tower = new TowerEntity("Torre 1", 1);
+        tower.UpdateApartments([new ApartmentEntity("999", "80m2", Guid.NewGuid())]);
+        var agg = CreateValid(towers: [tower]);
+
+        // Act
+        agg.AddMasiveApartment("Torre 1", 2);
+
+        // Assert
+        var updatedTower = agg.Towers.Single(t => t.Number == "Torre 1");
+        updatedTower.Apartments.Select(a => a.Number).Should().BeEquivalentTo(["101", "102"],
+            "la generación masiva reemplaza cualquier apartamento cargado manualmente.");
+    }
+
+    [Fact]
+    public void AddMasiveApartment_WithNonExistentTower_ShouldThrowDomainException()
+    {
+        // Arrange
+        var agg = CreateValid(towers: [new TowerEntity("Torre 1", 5)]);
+
+        // Act
+        var act = () => agg.AddMasiveApartment("Torre Inexistente", 4);
+
+        // Assert
+        act.Should().ThrowExactly<DomainException>().WithMessage("*Torre Inexistente*");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void AddMasiveApartment_WithNonPositiveApartmentsPerFloor_ShouldThrowDomainException(int invalidCount)
+    {
+        // Arrange
+        var agg = CreateValid(towers: [new TowerEntity("Torre 1", 5)]);
+
+        // Act
+        var act = () => agg.AddMasiveApartment("Torre 1", invalidCount);
+
+        // Assert
+        act.Should().ThrowExactly<DomainException>().WithMessage("*mayor a cero*");
+    }
+
 }

@@ -1,6 +1,9 @@
+using System.Security.Claims;
 using System.Text.Json;
 using Application.Auth.Cqrs.Commands;
+using Application.Auth.Cqrs.Queries;
 using Application.Auth.Dtos;
+using Domain.DomainShared;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -11,7 +14,7 @@ namespace Api.Controllers;
 /// <summary>
 /// Controller de autenticación. NO hereda de BaseController porque Auth
 /// no es un CRUD de agregado del dominio — tiene sus propios endpoints.
-/// Login y Register son públicos; Create-Role requiere autenticación.
+/// Login y Register son públicos; el resto requiere rol Administrator.
 /// </summary>
 [Route("api/[controller]")]
 [ApiController]
@@ -21,17 +24,23 @@ public class AuthController : ControllerBase
     private readonly IValidator<AuthLoginDto> _loginValidator;
     private readonly IValidator<AuthRegisterDto> _registerValidator;
     private readonly IValidator<CreateRoleDto> _createRoleValidator;
+    private readonly IValidator<UpdateUserDto> _updateUserValidator;
+    private readonly IValidator<UpdateRoleDto> _updateRoleValidator;
 
     public AuthController(
         IMediator mediator,
         IValidator<AuthLoginDto> loginValidator,
         IValidator<AuthRegisterDto> registerValidator,
-        IValidator<CreateRoleDto> createRoleValidator)
+        IValidator<CreateRoleDto> createRoleValidator,
+        IValidator<UpdateUserDto> updateUserValidator,
+        IValidator<UpdateRoleDto> updateRoleValidator)
     {
         _mediator = mediator;
         _loginValidator = loginValidator;
         _registerValidator = registerValidator;
         _createRoleValidator = createRoleValidator;
+        _updateUserValidator = updateUserValidator;
+        _updateRoleValidator = updateRoleValidator;
     }
 
     /// <summary>
@@ -97,6 +106,120 @@ public class AuthController : ControllerBase
             Data = result,
             Status = true,
             Message = "Rol creado exitosamente."
+        });
+    }
+
+    /// <summary>
+    /// Lista los usuarios del sistema de forma paginada. Solo administradores.
+    /// </summary>
+    [Authorize(Roles = "Administrator")]
+    [HttpGet("users/paginated")]
+    public async Task<IActionResult> GetUsersPaginated([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+    {
+        var result = await _mediator.Send(new GetUsersPaginatedQuery(pageNumber, pageSize));
+        return Ok(new ResponseApi<PaginatedList<UserDto>>
+        {
+            Data = result,
+            Status = true,
+            Message = "Operation carried out successfully."
+        });
+    }
+
+    /// <summary>
+    /// Lista los roles del sistema de forma paginada. Solo administradores.
+    /// </summary>
+    [Authorize(Roles = "Administrator")]
+    [HttpGet("roles/paginated")]
+    public async Task<IActionResult> GetRolesPaginated([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+    {
+        var result = await _mediator.Send(new GetRolesPaginatedQuery(pageNumber, pageSize));
+        return Ok(new ResponseApi<PaginatedList<RoleDto>>
+        {
+            Data = result,
+            Status = true,
+            Message = "Operation carried out successfully."
+        });
+    }
+
+    /// <summary>
+    /// Actualiza email, nombre y roles de un usuario existente. Solo administradores.
+    /// No permite quitar el rol Administrator al último administrador del sistema.
+    /// </summary>
+    [Authorize(Roles = "Administrator")]
+    [HttpPut("users/update")]
+    public async Task<IActionResult> UpdateUser([FromBody] UpdateUserDto updateUserDto)
+    {
+        var validation = await _updateUserValidator.ValidateAsync(updateUserDto);
+        if (validation.Errors.Count > 0)
+        {
+            throw new Util.Ex.DomainException(JsonSerializer.Serialize(validation.Errors));
+        }
+
+        var result = await _mediator.Send(new UpdateUserCommand(updateUserDto));
+        return Ok(new ResponseApi<bool>
+        {
+            Data = result,
+            Status = true,
+            Message = "Usuario actualizado exitosamente."
+        });
+    }
+
+    /// <summary>
+    /// Elimina un usuario existente. Solo administradores.
+    /// Bloquea la auto-eliminación y la eliminación del último administrador del sistema.
+    /// </summary>
+    [Authorize(Roles = "Administrator")]
+    [HttpDelete("users/delete")]
+    public async Task<IActionResult> DeleteUser([FromQuery] string userId)
+    {
+        var requestingUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? throw new Util.Ex.DomainException("No se pudo identificar al usuario autenticado.");
+
+        var result = await _mediator.Send(new DeleteUserCommand(userId, requestingUserId));
+        return Ok(new ResponseApi<bool>
+        {
+            Data = result,
+            Status = true,
+            Message = "Usuario eliminado exitosamente."
+        });
+    }
+
+    /// <summary>
+    /// Renombra un rol existente. Solo administradores.
+    /// </summary>
+    [Authorize(Roles = "Administrator")]
+    [HttpPut("roles/update")]
+    public async Task<IActionResult> UpdateRole([FromBody] UpdateRoleDto updateRoleDto)
+    {
+        var validation = await _updateRoleValidator.ValidateAsync(updateRoleDto);
+        if (validation.Errors.Count > 0)
+        {
+            throw new Util.Ex.DomainException(JsonSerializer.Serialize(validation.Errors));
+        }
+
+        var result = await _mediator.Send(new UpdateRoleCommand(updateRoleDto));
+        return Ok(new ResponseApi<bool>
+        {
+            Data = result,
+            Status = true,
+            Message = "Rol actualizado exitosamente."
+        });
+    }
+
+    /// <summary>
+    /// Elimina un rol existente. Solo administradores.
+    /// Bloquea la eliminación si el rol tiene usuarios asignados.
+    /// </summary>
+    [Authorize(Roles = "Administrator")]
+    [HttpDelete("roles/delete")]
+    public async Task<IActionResult> DeleteRole([FromQuery] string roleId)
+    {
+        var result = await _mediator.Send(new DeleteRoleCommand(roleId));
+        return Ok(new ResponseApi<bool>
+        {
+            Data = result,
+            Status = true,
+            Message = "Rol eliminado exitosamente."
         });
     }
 }

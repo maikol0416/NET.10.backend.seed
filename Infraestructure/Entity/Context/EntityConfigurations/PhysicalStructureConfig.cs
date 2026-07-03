@@ -144,12 +144,12 @@ public class PhysicalStructureConfig :IEntityTypeConfiguration<PhysicalStructure
 
                 apartmentBuilder.Property(a => a.Size)
                     .HasColumnName("Size")
-                    .IsRequired()
+                    .IsRequired(false)
                     .HasMaxLength(50);
 
                 apartmentBuilder.Property(a => a.IdOwner)
                     .HasColumnName("IdOwner")
-                    .IsRequired();
+                    .IsRequired(false);
             });
         });
 

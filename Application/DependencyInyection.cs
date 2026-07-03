@@ -49,6 +49,8 @@ public static class DependencyInyection
         services.AddScoped<IValidator<AuthLoginDto>, LoginValidator>();
         services.AddScoped<IValidator<AuthRegisterDto>, RegisterValidator>();
         services.AddScoped<IValidator<CreateRoleDto>, CreateRoleValidator>();
+        services.AddScoped<IValidator<UpdateUserDto>, UpdateUserValidator>();
+        services.AddScoped<IValidator<UpdateRoleDto>, UpdateRoleValidator>();
     }
 
     public static void RegisterMediatrAbstractService<Service, DTO, ENT, TImplementation>(this IServiceCollection services)
