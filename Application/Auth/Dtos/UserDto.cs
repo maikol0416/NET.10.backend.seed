@@ -10,4 +10,10 @@ public class UserDto
     public string Email { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public List<string> Roles { get; set; } = [];
+
+    /// <summary>
+    /// Desglose de módulos permitidos por cada rol del usuario (un rol puede tener
+    /// varios). El front usa esto para dejar elegir con cuál rol quiere trabajar.
+    /// </summary>
+    public List<RolePermissionsDto> RolePermissions { get; set; } = [];
 }

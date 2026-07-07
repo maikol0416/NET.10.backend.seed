@@ -8,5 +8,6 @@ public record UserSummary(
     string Id,
     string Email,
     string FullName,
-    IEnumerable<string> Roles
+    IEnumerable<string> Roles,
+    IEnumerable<RolePermissionsSummary> RolePermissions
 );

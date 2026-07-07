@@ -29,7 +29,13 @@ public class GetUsersPaginatedQueryHandler : IRequestHandler<GetUsersPaginatedQu
             Id = u.Id,
             Email = u.Email,
             FullName = u.FullName,
-            Roles = u.Roles.ToList()
+            Roles = u.Roles.ToList(),
+            RolePermissions = u.RolePermissions.Select(rp => new RolePermissionsDto
+            {
+                RoleId = rp.RoleId,
+                RoleName = rp.RoleName,
+                Permissions = rp.Permissions.Select(p => p.ToString()).ToList()
+            }).ToList()
         }).ToList();
 
         return new PaginatedList<UserDto>(dtos, result.TotalCount, result.PageNumber, result.PageSize);

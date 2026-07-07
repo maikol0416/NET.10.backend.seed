@@ -27,7 +27,8 @@ public class GetRolesPaginatedQueryHandler : IRequestHandler<GetRolesPaginatedQu
         var dtos = result.Items.Select(r => new RoleDto
         {
             Id = r.Id,
-            Name = r.Name
+            Name = r.Name,
+            Permissions = r.Permissions.Select(p => p.ToString()).ToList()
         }).ToList();
 
         return new PaginatedList<RoleDto>(dtos, result.TotalCount, result.PageNumber, result.PageSize);

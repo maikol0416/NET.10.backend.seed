@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Domain.DomainShared;
 using Domain.Ports.Identity;
 using Microsoft.AspNetCore.Identity;
@@ -12,7 +13,7 @@ namespace Infraestructure.Identity;
 /// </summary>
 public class AuthService : IAuthService
 {
-    private const string AdminRoleName = "Administrator";
+    private const string PermissionClaimType = "Permission";
 
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
@@ -61,6 +62,7 @@ public class AuthService : IAuthService
 
         var roles = await _userManager.GetRolesAsync(user);
         var token = await _jwtTokenService.GenerateTokenAsync(user.Id, user.Email!, roles);
+        var rolePermissions = await BuildRolePermissionsSummaryAsync(user);
 
         return new AuthResult(
             Success: true,
@@ -69,7 +71,8 @@ public class AuthService : IAuthService
             FullName: user.FullName,
             Expiration: DateTime.UtcNow.AddMinutes(60),
             Errors: null,
-            Roles: roles
+            Roles: roles,
+            RolePermissions: rolePermissions
         );
     }
 
@@ -144,6 +147,7 @@ public class AuthService : IAuthService
 
         var roles = await _userManager.GetRolesAsync(user);
         var token = await _jwtTokenService.GenerateTokenAsync(user.Id, user.Email!, roles);
+        var rolePermissions = await BuildRolePermissionsSummaryAsync(user);
 
         return new AuthResult(
             Success: true,
@@ -152,46 +156,41 @@ public class AuthService : IAuthService
             FullName: user.FullName,
             Expiration: DateTime.UtcNow.AddMinutes(60),
             Errors: null,
-            Roles: roles
+            Roles: roles,
+            RolePermissions: rolePermissions
         );
     }
 
-    public async Task<AuthResult> CreateRoleAsync(string roleName)
+    public async Task<AuthResult> CreateRoleAsync(string roleName, IEnumerable<ModuleEnum>? initialPermissions = null)
     {
         var roleExists = await _roleManager.RoleExistsAsync(roleName);
         if (roleExists)
         {
-            return new AuthResult(
-                Success: false,
-                Token: null,
-                Email: null,
-                FullName: null,
-                Expiration: null,
-                Errors: [$"El rol '{roleName}' ya existe."]
-            );
+            return Failure($"El rol '{roleName}' ya existe.");
         }
 
-        var result = await _roleManager.CreateAsync(new IdentityRole(roleName));
+        var role = new IdentityRole(roleName);
+        var result = await _roleManager.CreateAsync(role);
         if (!result.Succeeded)
         {
-            return new AuthResult(
-                Success: false,
-                Token: null,
-                Email: null,
-                FullName: null,
-                Expiration: null,
-                Errors: result.Errors.Select(e => e.Description)
-            );
+            return Failure(result.Errors.Select(e => e.Description));
         }
 
-        return new AuthResult(
-            Success: true,
-            Token: null,
-            Email: null,
-            FullName: null,
-            Expiration: null,
-            Errors: null
-        );
+        // Administrator ya tiene acceso a todos los módulos por política de negocio
+        // (ver RolePermissionsPolicy) — no tiene sentido guardarle claims explícitos.
+        if (!RolePermissionsPolicy.IsAdministrator(roleName))
+        {
+            foreach (var permission in (initialPermissions ?? []).Distinct())
+            {
+                var claimResult = await _roleManager.AddClaimAsync(role, new Claim(PermissionClaimType, permission.ToString()));
+                if (!claimResult.Succeeded)
+                {
+                    return Failure(claimResult.Errors.Select(e => e.Description));
+                }
+            }
+        }
+
+        return Success();
     }
 
     public async Task<PaginatedList<UserSummary>> GetUsersPaginatedAsync(int pageNumber, int pageSize)
@@ -207,7 +206,8 @@ public class AuthService : IAuthService
         foreach (var user in users)
         {
             var roles = await _userManager.GetRolesAsync(user);
-            summaries.Add(new UserSummary(user.Id, user.Email!, user.FullName, roles));
+            var rolePermissions = await BuildRolePermissionsSummaryAsync(user);
+            summaries.Add(new UserSummary(user.Id, user.Email!, user.FullName, roles, rolePermissions));
         }
 
         return new PaginatedList<UserSummary>(summaries, totalCount, pageNumber, pageSize);
@@ -222,7 +222,13 @@ public class AuthService : IAuthService
             .Take(pageSize)
             .ToListAsync();
 
-        var summaries = roles.Select(r => new RoleSummary(r.Id, r.Name!)).ToList();
+        var summaries = new List<RoleSummary>();
+        foreach (var role in roles)
+        {
+            var permissions = await GetRolePermissionsAsync(role);
+            summaries.Add(new RoleSummary(role.Id, role.Name!, permissions));
+        }
+
         return new PaginatedList<RoleSummary>(summaries, totalCount, pageNumber, pageSize);
     }
 
@@ -248,7 +254,7 @@ public class AuthService : IAuthService
         var rolesToRemove = currentRoles.Except(incomingRoles).ToList();
         var rolesToAdd = incomingRoles.Except(currentRoles).ToList();
 
-        if (rolesToRemove.Contains(AdminRoleName))
+        if (rolesToRemove.Contains(RolePermissionsPolicy.AdministratorRoleName))
         {
             var adminGuardError = await ValidateNotLastAdminAsync(user);
             if (adminGuardError != null)
@@ -371,6 +377,86 @@ public class AuthService : IAuthService
         return Success();
     }
 
+    public async Task<AuthResult> AssignPermissionsToRoleAsync(string roleId, IEnumerable<ModuleEnum> permissions)
+    {
+        var role = await _roleManager.FindByIdAsync(roleId);
+        if (role == null)
+        {
+            return Failure("Rol no encontrado.");
+        }
+
+        if (RolePermissionsPolicy.IsAdministrator(role.Name!))
+        {
+            return Failure("El rol Administrator siempre tiene acceso a todos los módulos; no es necesario ni posible asignarle permisos.");
+        }
+
+        var currentClaims = await _roleManager.GetClaimsAsync(role);
+        var currentPermissionClaims = currentClaims.Where(c => c.Type == PermissionClaimType).ToList();
+
+        foreach (var claim in currentPermissionClaims)
+        {
+            var removeResult = await _roleManager.RemoveClaimAsync(role, claim);
+            if (!removeResult.Succeeded)
+            {
+                return Failure(removeResult.Errors.Select(e => e.Description));
+            }
+        }
+
+        foreach (var permission in permissions.Distinct())
+        {
+            var addResult = await _roleManager.AddClaimAsync(role, new Claim(PermissionClaimType, permission.ToString()));
+            if (!addResult.Succeeded)
+            {
+                return Failure(addResult.Errors.Select(e => e.Description));
+            }
+        }
+
+        return Success();
+    }
+
+    /// <summary>
+    /// Lee y parsea los claims de permisos (módulos) de un rol, y aplica
+    /// RolePermissionsPolicy — Administrator siempre resuelve a todos los módulos,
+    /// sin importar qué claims tenga guardados.
+    /// Ignora silenciosamente valores que ya no existan en ModuleEnum (ej. tras un rename del enum).
+    /// </summary>
+    private async Task<IEnumerable<ModuleEnum>> GetRolePermissionsAsync(IdentityRole role)
+    {
+        var claims = await _roleManager.GetClaimsAsync(role);
+        var assignedPermissions = claims
+            .Where(c => c.Type == PermissionClaimType)
+            .Select(c => Enum.TryParse<ModuleEnum>(c.Value, out var module) ? (ModuleEnum?)module : null)
+            .Where(m => m.HasValue)
+            .Select(m => m!.Value)
+            .ToList();
+
+        return RolePermissionsPolicy.Resolve(role.Name!, assignedPermissions);
+    }
+
+    /// <summary>
+    /// Arma el desglose de permisos por cada rol del usuario — un usuario puede
+    /// tener varios roles y el front deja elegir con cuál trabajar.
+    /// </summary>
+    private async Task<IEnumerable<RolePermissionsSummary>> BuildRolePermissionsSummaryAsync(ApplicationUser user)
+    {
+        var roleNames = await _userManager.GetRolesAsync(user);
+        var summaries = new List<RolePermissionsSummary>();
+
+        foreach (var roleName in roleNames)
+        {
+            var role = await _roleManager.FindByNameAsync(roleName);
+            if (role == null)
+            {
+                continue;
+            }
+
+            var permissions = await GetRolePermissionsAsync(role);
+            summaries.Add(new RolePermissionsSummary(role.Id, role.Name!, permissions));
+        }
+
+        return summaries;
+    }
+
     /// <summary>
     /// Bloquea la operación si el usuario es Administrator y es el último con ese rol —
     /// evita que el sistema se quede sin administradores.
@@ -378,12 +464,12 @@ public class AuthService : IAuthService
     private async Task<string?> ValidateNotLastAdminAsync(ApplicationUser user)
     {
         var userRoles = await _userManager.GetRolesAsync(user);
-        if (!userRoles.Contains(AdminRoleName))
+        if (!userRoles.Contains(RolePermissionsPolicy.AdministratorRoleName))
         {
             return null;
         }
 
-        var admins = await _userManager.GetUsersInRoleAsync(AdminRoleName);
+        var admins = await _userManager.GetUsersInRoleAsync(RolePermissionsPolicy.AdministratorRoleName);
         if (admins.Count <= 1)
         {
             return "No puedes eliminar ni quitar el rol Administrator al último administrador del sistema.";

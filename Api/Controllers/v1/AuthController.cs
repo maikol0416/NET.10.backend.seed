@@ -26,6 +26,7 @@ public class AuthController : ControllerBase
     private readonly IValidator<CreateRoleDto> _createRoleValidator;
     private readonly IValidator<UpdateUserDto> _updateUserValidator;
     private readonly IValidator<UpdateRoleDto> _updateRoleValidator;
+    private readonly IValidator<AssignRolePermissionsDto> _assignRolePermissionsValidator;
 
     public AuthController(
         IMediator mediator,
@@ -33,7 +34,8 @@ public class AuthController : ControllerBase
         IValidator<AuthRegisterDto> registerValidator,
         IValidator<CreateRoleDto> createRoleValidator,
         IValidator<UpdateUserDto> updateUserValidator,
-        IValidator<UpdateRoleDto> updateRoleValidator)
+        IValidator<UpdateRoleDto> updateRoleValidator,
+        IValidator<AssignRolePermissionsDto> assignRolePermissionsValidator)
     {
         _mediator = mediator;
         _loginValidator = loginValidator;
@@ -41,6 +43,7 @@ public class AuthController : ControllerBase
         _createRoleValidator = createRoleValidator;
         _updateUserValidator = updateUserValidator;
         _updateRoleValidator = updateRoleValidator;
+        _assignRolePermissionsValidator = assignRolePermissionsValidator;
     }
 
     /// <summary>
@@ -220,6 +223,28 @@ public class AuthController : ControllerBase
             Data = result,
             Status = true,
             Message = "Rol eliminado exitosamente."
+        });
+    }
+
+    /// <summary>
+    /// Reemplaza la lista completa de permisos (módulos) de un rol. Solo administradores.
+    /// </summary>
+    [Authorize(Roles = "Administrator")]
+    [HttpPut("roles/permissions")]
+    public async Task<IActionResult> AssignRolePermissions([FromBody] AssignRolePermissionsDto assignRolePermissionsDto)
+    {
+        var validation = await _assignRolePermissionsValidator.ValidateAsync(assignRolePermissionsDto);
+        if (validation.Errors.Count > 0)
+        {
+            throw new Util.Ex.DomainException(JsonSerializer.Serialize(validation.Errors));
+        }
+
+        var result = await _mediator.Send(new AssignRolePermissionsCommand(assignRolePermissionsDto));
+        return Ok(new ResponseApi<bool>
+        {
+            Data = result,
+            Status = true,
+            Message = "Permisos actualizados exitosamente."
         });
     }
 }

@@ -22,7 +22,11 @@ public class CreateRoleCommandHandler : IRequestHandler<CreateRoleCommand, bool>
 
     public async Task<bool> Handle(CreateRoleCommand request, CancellationToken cancellationToken)
     {
-        var result = await _authService.CreateRoleAsync(request.RoleDto.RoleName);
+        var permissions = (request.RoleDto.Permissions ?? [])
+            .Select(Enum.Parse<ModuleEnum>)
+            .ToList();
+
+        var result = await _authService.CreateRoleAsync(request.RoleDto.RoleName, permissions);
 
         if (!result.Success)
         {

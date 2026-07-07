@@ -6,5 +6,6 @@ namespace Domain.DomainShared;
 /// </summary>
 public record RoleSummary(
     string Id,
-    string Name
+    string Name,
+    IEnumerable<ModuleEnum> Permissions
 );

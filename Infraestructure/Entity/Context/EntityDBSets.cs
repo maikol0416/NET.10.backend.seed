@@ -16,8 +16,10 @@ public abstract class EntityDBSets : DbContext
         modelBuilder.ApplyConfiguration(new PhysicalStructureConfig());
         modelBuilder.ApplyConfiguration(new DocumentConfig());
         modelBuilder.ApplyConfiguration(new OwnerConfig());
+        modelBuilder.ApplyConfiguration(new GuestConfig());
     }
     public DbSet<PhysicalStructureAgg> PhysicalStructure { get; set; }
     public DbSet<DocumentAgg> Document { get; set; }
     public DbSet<OwnerAgg> Owner { get; set; }
+    public DbSet<GuestAgg> Guest { get; set; }
 }

@@ -42,7 +42,13 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, AuthRespo
             Email = result.Email!,
             FullName = result.FullName!,
             Expiration = result.Expiration!.Value,
-            Roles = result.Roles?.ToList() ?? new List<string>()
+            Roles = result.Roles?.ToList() ?? new List<string>(),
+            RolePermissions = (result.RolePermissions ?? []).Select(rp => new RolePermissionsDto
+            {
+                RoleId = rp.RoleId,
+                RoleName = rp.RoleName,
+                Permissions = rp.Permissions.Select(p => p.ToString()).ToList()
+            }).ToList()
         };
     }
 }

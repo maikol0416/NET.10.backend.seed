@@ -31,11 +31,13 @@ public static class DependencyInyection
         services.RegisterMediatrAbstractService<PhysicalStructureService, PhysicalStructureDto, PhysicalStructureAgg, IPhysicalStructureService>();
         services.RegisterMediatrAbstractService<DocumentService, DocumentDto, DocumentAgg, IDocumentService>();
         services.RegisterMediatrAbstractService<OwnerService, OwnerDto, OwnerAgg, IOwnerService>();
+        services.RegisterMediatrAbstractService<GuestService, GuestDto, GuestAgg, IGuestService>();
 
         // Query side — servicios de solo lectura con EntityReadOnlyDbContext (NoTracking)
         services.RegisterMediatrAbstractReadOnlyService<PhysicalStructureReadOnlyService, PhysicalStructureDto, PhysicalStructureAgg, IPhysicalStructureReadOnlyService>();
         services.RegisterMediatrAbstractReadOnlyService<DocumentReadOnlyService, DocumentDto, DocumentAgg, IDocumentReadOnlyService>();
         services.RegisterMediatrAbstractReadOnlyService<OwnerReadOnlyService, OwnerDto, OwnerAgg, IOwnerReadOnlyService>();
+        services.RegisterMediatrAbstractReadOnlyService<GuestReadOnlyService, GuestDto, GuestAgg, IGuestReadOnlyService>();
         return services;
     }
 
@@ -44,6 +46,7 @@ public static class DependencyInyection
         services.AddScoped<IValidator<PhysicalStructureDto>, PhysicalStructureValidator>();
         services.AddScoped<IValidator<DocumentDto>, DocumentValidator>();
         services.AddScoped<IValidator<OwnerDto>, OwnerValidator>();
+        services.AddScoped<IValidator<GuestDto>, GuestValidator>();
 
         // Auth validators
         services.AddScoped<IValidator<AuthLoginDto>, LoginValidator>();
@@ -51,6 +54,7 @@ public static class DependencyInyection
         services.AddScoped<IValidator<CreateRoleDto>, CreateRoleValidator>();
         services.AddScoped<IValidator<UpdateUserDto>, UpdateUserValidator>();
         services.AddScoped<IValidator<UpdateRoleDto>, UpdateRoleValidator>();
+        services.AddScoped<IValidator<AssignRolePermissionsDto>, AssignRolePermissionsValidator>();
     }
 
     public static void RegisterMediatrAbstractService<Service, DTO, ENT, TImplementation>(this IServiceCollection services)

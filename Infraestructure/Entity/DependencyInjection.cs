@@ -99,11 +99,13 @@ public static class DependencyInjection
         services.AddScoped<IPhysicalStructureRepository, PhysicalStructureRepository>();
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IOwnerRepository, OwnerRepository>();
+        services.AddScoped<IGuestRepository, GuestRepository>();
 
         //Repository — Query side (solo lectura)
         services.AddScoped<IPhysicalStructureReadOnlyRepository, PhysicalStructureReadOnlyRepository>();
         services.AddScoped<IDocumentReadOnlyRepository, DocumentReadOnlyRepository>();
         services.AddScoped<IOwnerReadOnlyRepository, OwnerReadOnlyRepository>();
+        services.AddScoped<IGuestReadOnlyRepository, GuestReadOnlyRepository>();
 
         return services;
     }

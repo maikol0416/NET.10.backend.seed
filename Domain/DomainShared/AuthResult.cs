@@ -12,5 +12,6 @@ public record AuthResult(
     string? FullName,
     DateTime? Expiration,
     IEnumerable<string>? Errors,
-    IEnumerable<string>? Roles = null
+    IEnumerable<string>? Roles = null,
+    IEnumerable<RolePermissionsSummary>? RolePermissions = null
 );

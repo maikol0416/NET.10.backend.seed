@@ -20,5 +20,11 @@ public class CreateRoleValidator : AbstractValidator<CreateRoleDto>
             .WithErrorCode("RoleNameTooLong")
             .WithMessage("El nombre del rol no puede exceder los 50 caracteres.")
             .WithName(nameof(CreateRoleDto.RoleName));
+
+        RuleForEach(x => x.Permissions)
+            .Must(ModulePermissionsValidation.IsValidModuleName)
+            .WithErrorCode("InvalidModuleName")
+            .WithMessage("El módulo indicado no es válido.")
+            .When(x => x.Permissions != null);
     }
 }
