@@ -11,6 +11,7 @@ using Infraestructure.Identity;
 using Infraestructure.Repository.Properties;
 using Infraestructure.Repository.DocumentManagement;
 using Infraestructure.Repository.People;
+using Infraestructure.Repository.Tenancy;
 
 namespace Infraestructure.Entity;
 
@@ -100,12 +101,14 @@ public static class DependencyInjection
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IOwnerRepository, OwnerRepository>();
         services.AddScoped<IGuestRepository, GuestRepository>();
+        services.AddScoped<IManagementCompanyRepository, ManagementCompanyRepository>();
 
         //Repository — Query side (solo lectura)
         services.AddScoped<IPhysicalStructureReadOnlyRepository, PhysicalStructureReadOnlyRepository>();
         services.AddScoped<IDocumentReadOnlyRepository, DocumentReadOnlyRepository>();
         services.AddScoped<IOwnerReadOnlyRepository, OwnerReadOnlyRepository>();
         services.AddScoped<IGuestReadOnlyRepository, GuestReadOnlyRepository>();
+        services.AddScoped<IManagementCompanyReadOnlyRepository, ManagementCompanyReadOnlyRepository>();
 
         return services;
     }

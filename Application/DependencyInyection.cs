@@ -8,6 +8,7 @@ using Application.Validator;
 using Domain.BoundedContext.Properties;
 using Domain.BoundedContext.DocumentManagement;
 using Domain.BoundedContext.People;
+using Domain.BoundedContext.Tenancy;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,12 +33,14 @@ public static class DependencyInyection
         services.RegisterMediatrAbstractService<DocumentService, DocumentDto, DocumentAgg, IDocumentService>();
         services.RegisterMediatrAbstractService<OwnerService, OwnerDto, OwnerAgg, IOwnerService>();
         services.RegisterMediatrAbstractService<GuestService, GuestDto, GuestAgg, IGuestService>();
+        services.RegisterMediatrAbstractService<ManagementCompanyService, ManagementCompanyDto, ManagementCompanyAgg, IManagementCompanyService>();
 
         // Query side — servicios de solo lectura con EntityReadOnlyDbContext (NoTracking)
         services.RegisterMediatrAbstractReadOnlyService<PhysicalStructureReadOnlyService, PhysicalStructureDto, PhysicalStructureAgg, IPhysicalStructureReadOnlyService>();
         services.RegisterMediatrAbstractReadOnlyService<DocumentReadOnlyService, DocumentDto, DocumentAgg, IDocumentReadOnlyService>();
         services.RegisterMediatrAbstractReadOnlyService<OwnerReadOnlyService, OwnerDto, OwnerAgg, IOwnerReadOnlyService>();
         services.RegisterMediatrAbstractReadOnlyService<GuestReadOnlyService, GuestDto, GuestAgg, IGuestReadOnlyService>();
+        services.RegisterMediatrAbstractReadOnlyService<ManagementCompanyReadOnlyService, ManagementCompanyDto, ManagementCompanyAgg, IManagementCompanyReadOnlyService>();
         return services;
     }
 
@@ -47,6 +50,7 @@ public static class DependencyInyection
         services.AddScoped<IValidator<DocumentDto>, DocumentValidator>();
         services.AddScoped<IValidator<OwnerDto>, OwnerValidator>();
         services.AddScoped<IValidator<GuestDto>, GuestValidator>();
+        services.AddScoped<IValidator<ManagementCompanyDto>, ManagementCompanyValidator>();
 
         // Auth validators
         services.AddScoped<IValidator<AuthLoginDto>, LoginValidator>();
