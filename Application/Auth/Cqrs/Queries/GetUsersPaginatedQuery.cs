@@ -35,7 +35,8 @@ public class GetUsersPaginatedQueryHandler : IRequestHandler<GetUsersPaginatedQu
                 RoleId = rp.RoleId,
                 RoleName = rp.RoleName,
                 Permissions = rp.Permissions.Select(p => p.ToString()).ToList()
-            }).ToList()
+            }).ToList(),
+            CompanyId = u.CompanyId
         }).ToList();
 
         return new PaginatedList<UserDto>(dtos, result.TotalCount, result.PageNumber, result.PageSize);

@@ -6,17 +6,43 @@ http://localhost:5296/api/auth
 ```
 
 ## Autenticación
-Todos los endpoints salvo `login`, `register` y `create-role` requieren:
+Todos los endpoints salvo `login` y `create-role` requieren:
 ```
 Authorization: Bearer {token}
 ```
 y que el usuario del token tenga el rol **`Administrator`** (`[Authorize(Roles = "Administrator")]`). Si falta el header → `401`. Si el token es válido pero el usuario no tiene el rol → `403`.
 
+> 🆕 `register` es un caso especial: sigue sin el atributo `[Authorize]` a nivel HTTP (por eso no puede devolver `401`/`403` "de framework"), pero **el propio handler exige el header `Authorization` en la práctica** salvo para el registro del primer `Administrator` del sistema. Ver sección 2 para el detalle completo — no lo trates como un endpoint público más.
+
 ---
 
-## 🆕 Última actualización — el rol Administrator tiene acceso total automático
+## 🆕 Última actualización — companyId también en consulta y edición de usuarios
 
-Si ya integraste la versión anterior de este documento, esto es lo único que cambió desde entonces:
+La actualización anterior (justo abajo) ya había agregado `companyId` a `login`/`register`. Esta actualización completa el ciclo: ahora también se puede **ver** y **editar** la empresa de un usuario existente.
+
+- **`GET /users/paginated`**: cada item de `UserDto` gana `companyId: string | null`.
+- **`PUT /users/update`**: el body (`UpdateUserDto`) gana `companyId?: string | null` — opcional, para reasignar la empresa del usuario.
+- **Misma regla que en `register`**: si `roles` incluye `Administrator`, el backend ignora cualquier `companyId` que mandes y lo deja en `null` — un usuario de plataforma nunca pertenece a una empresa.
+- **Mismo error que en `register`** si mandas un `companyId` que no existe: `400`, mensaje *"La empresa indicada no existe."*
+- Como `PUT /users/update` ya requería rol `Administrator` para poder llamarlo, no hay reglas adicionales de "quién puede reasignar la empresa de quién" — cualquier `Administrator` puede reasignar la empresa de cualquier usuario.
+- No hay cambios de contrato en ningún otro endpoint — es aditivo en los dos DTOs mencionados arriba.
+
+---
+
+## 🆕 Actualización anterior — multi-tenant: usuarios atados a una empresa
+
+Cada usuario (salvo `Administrator`, que es un rol de plataforma) ahora pertenece a **una única empresa** (`companyId`). Esto afecta `login` y `register`:
+
+- **`AuthResponseDto` gana `companyId: string | null`** en `login` y `register` — aditivo, no rompe nada existente.
+- **`AuthRegisterDto` gana `companyId?: string`** — opcional, y **casi nunca lo vas a mandar** (ver sección 2 para las reglas exactas de cuándo sí).
+- **`register` cambia sus reglas de negocio**: ya no es un registro libre. El backend valida quién puede registrar a quién según el token de quien hace la llamada. Ver la tabla completa en la sección 2.
+- Para dar de alta empresas y obtener el listado que alimenta el selector de `companyId`, usa el módulo `ManagementCompany` — ver [`COMPANY_API_DOCUMENTATION.md`](./COMPANY_API_DOCUMENTATION.md).
+
+---
+
+## 🆕 Dos actualizaciones atrás — el rol Administrator tiene acceso total automático
+
+Esto es lo que cambió en la actualización previa a la de multi-tenant:
 
 - **`Administrator` siempre resuelve a los 6 módulos completos** en `rolePermissions`/`permissions` (login, register, `users/paginated`, `roles/paginated`), sin importar qué se le haya asignado explícitamente. Es una regla fija del backend, no depende de configuración.
 - **`PUT /roles/permissions` ahora rechaza** intentos de asignar permisos al rol `Administrator` con `400` — no tiene efecto porque ya tiene acceso total, así que el backend lo bloquea explícitamente en vez de aceptarlo silenciosamente sin hacer nada.
@@ -31,12 +57,12 @@ El front ya tiene implementado `login`, `register` y `create-role` tal como esta
 
 | Endpoint | Estado | Qué cambió |
 |---|---|---|
-| `POST /login` | 🟡 MODIFICADO | El response (`AuthResponseDto`) gana el campo `rolePermissions` (ver abajo). Nada se quitó ni renombró — es aditivo, no rompe nada existente. |
-| `POST /register` | 🟡 MODIFICADO | Igual que login: gana `rolePermissions` en el response. El request no cambió. |
+| `POST /login` | 🟡 MODIFICADO | El response (`AuthResponseDto`) gana `rolePermissions` y 🆕 `companyId`. Nada se quitó ni renombró — es aditivo, no rompe nada existente. |
+| `POST /register` | 🟡 MODIFICADO | Gana `rolePermissions` y 🆕 `companyId` en el response, y 🆕 `companyId` opcional en el request. 🆕 Además, las reglas de quién puede registrar a quién cambiaron por completo — ver sección 2. |
 | `POST /create-role` | 🟡 MODIFICADO | El request (`CreateRoleDto`) gana el campo opcional `permissions: string[]`. Si no lo envías, el rol se crea sin permisos (igual que antes). |
-| `GET /users/paginated` | 🟢 NUEVO | Lista usuarios paginados, incluye `rolePermissions` por usuario. |
+| `GET /users/paginated` | 🟢 NUEVO | Lista usuarios paginados, incluye `rolePermissions` y 🆕 `companyId` por usuario. |
 | `GET /roles/paginated` | 🟢 NUEVO | Lista roles paginados, incluye `permissions` por rol. |
-| `PUT /users/update` | 🟢 NUEVO | Actualiza email, nombre y roles de un usuario. |
+| `PUT /users/update` | 🟢 NUEVO | Actualiza email, nombre, roles y 🆕 `companyId` de un usuario. |
 | `DELETE /users/delete` | 🟢 NUEVO | Elimina un usuario. |
 | `PUT /roles/update` | 🟢 NUEVO | Renombra un rol. |
 | `DELETE /roles/delete` | 🟢 NUEVO | Elimina un rol (si no tiene usuarios asignados). |
@@ -67,22 +93,18 @@ curl -X POST http://localhost:5296/api/auth/login \
   -d '{"email": "admin@test.com", "password": "Admin123!"}'
 ```
 
-**Response (200 OK) — 🟡 campo nuevo: `rolePermissions`:**
+**Response (200 OK) — 🟡 campos nuevos: `rolePermissions` y `companyId`:**
 ```json
 {
   "data": {
     "token": "eyJhbGciOi...",
-    "email": "admin@test.com",
-    "fullName": "Administrador",
+    "email": "gerente@losrobles.com",
+    "fullName": "Gerente Los Robles",
     "expiration": "2026-07-07T15:30:00Z",
-    "roles": ["Administrator", "Supervisor"],
-    "role": "Administrator",
+    "roles": ["Supervisor"],
+    "role": "Supervisor",
+    "companyId": "3f2f1a2b-4c5d-6e7f-8a9b-0c1d2e3f4a5b",
     "rolePermissions": [
-      {
-        "roleId": "b1c2d3e4-....",
-        "roleName": "Administrator",
-        "permissions": ["PhysicalStructure", "Owner", "Document", "Guest", "Users", "Roles"]
-      },
       {
         "roleId": "c2d3e4f5-....",
         "roleName": "Supervisor",
@@ -96,32 +118,81 @@ curl -X POST http://localhost:5296/api/auth/login \
 ```
 > `role` (singular) sigue existiendo igual que antes (es el primer elemento de `roles`) — no lo quites del front todavía si ya lo usas en algún lado, sigue funcionando.
 
+### 🆕 De dónde sale `companyId` y qué hacer con él
+
+- **No lo pides tú, no lo calculas tú** — lo devuelve el backend en cada `login`/`register`, ya resuelto. El front solo lo **guarda** (junto al token, igual que `roles`) y lo usa para lo que necesite mostrar en UI (ej. "Empresa: Los Robles", si decides pedir el nombre por separado a `GET /api/managementcompany/getById?id={companyId}`).
+- **Vale `null` únicamente cuando el usuario logueado tiene el rol `Administrator`** (rol de plataforma, no pertenece a ninguna empresa). Para cualquier otro rol, `companyId` siempre trae un UUID válido.
+- Úsalo para decidir si mostrar el selector de empresa en la pantalla de registro (ver sección 2): `esAdministradorDePlataforma = roles.includes("Administrator")`.
+
 ---
 
-## 2. REGISTER (POST) — 🟡 MODIFICADO
+## 2. REGISTER (POST) — 🟡 MODIFICADO EN PROFUNDIDAD (multi-tenant)
 **Endpoint:** `POST /api/auth/register`
-**Auth:** Público (`AllowAnonymous`)
+**Auth:** Técnicamente sigue siendo `[AllowAnonymous]` a nivel HTTP (necesario para poder crear al primer `Administrator` en una base vacía), pero 🆕 **el backend ahora valida quién puede registrar a quién** según el token con el que se llama (o la ausencia de token). Ya no es un endpoint de registro libre — si tu front hoy lo llama siempre sin `Authorization`, **se va a romper** para cualquier caso que no sea el bootstrap inicial. Lee esta sección completa antes de tocar la pantalla de registro/invitación de usuarios.
 
-**Body (Entrada - AuthRegisterDto, sin cambios):**
+### Body (Entrada - AuthRegisterDto) — 🆕 campo nuevo opcional `companyId`
 ```json
 {
   "email": "nuevo@test.com",
   "password": "Password123!",
   "fullName": "Usuario Nuevo",
-  "role": "Supervisor"
+  "role": "Supervisor",
+  "companyId": "3f2f1a2b-4c5d-6e7f-8a9b-0c1d2e3f4a5b"
 }
 ```
 
-**cURL:**
+### 🆕 Reglas de negocio — quién puede registrar a quién, y de dónde sale `companyId`
+
+| # | ¿Quién llama? | `role` que se pide | ¿Mando `companyId`? | Qué pasa |
+|---|---|---|---|---|
+| 1 | Nadie (sin header `Authorization`) | `Administrator` | No | ✅ Permitido **solo si todavía no existe ningún `Administrator`** en el sistema (bootstrap, caso único de arranque). El usuario queda sin empresa (`companyId: null`). |
+| 2 | Usuario logueado con rol `Administrator` | `Administrator` | No | ✅ Permitido. El nuevo usuario también queda sin empresa. |
+| 3 | Usuario logueado con rol `Administrator` | Cualquier otro rol | **Sí, obligatorio** | ✅ Permitido. El nuevo usuario queda en la empresa indicada. El front debe mostrar un **selector de empresa** en este caso (ver abajo de dónde sacarlo). |
+| 4 | Usuario logueado con cualquier rol que **no** sea `Administrator` | Cualquier rol ≠ `Administrator` | **No lo mandes** (si lo mandas, se ignora) | ✅ Permitido. El nuevo usuario hereda automáticamente **la misma empresa** de quien está haciendo la llamada. |
+| — | Sin header `Authorization`, fuera del caso 1 | — | — | ❌ `400` — "Debes iniciar sesión para registrar usuarios." |
+
+**En la práctica, el front solo necesita dos flujos de UI:**
+
+- **Pantalla "invitar usuario a mi empresa"** (la inmensa mayoría de los casos, caso 4 de la tabla): el usuario logueado (con cualquier rol que no sea `Administrator`) llena el formulario **sin** campo de empresa — ni lo muestres, ni lo mandes en el body. El backend ya sabe a qué empresa pertenece quien invita y se la asigna automáticamente al nuevo usuario.
+- **Pantalla de plataforma "crear usuario para una empresa"** (uso exclusivo de `Administrator`, caso 3 de la tabla): sí necesitas un selector de empresa. Se alimenta con `GET /api/managementcompany/getAll` (ver [`COMPANY_API_DOCUMENTATION.md`](./COMPANY_API_DOCUMENTATION.md#4-obtener-todas-las-empresas-get)) — listas el `name` de cada empresa y mandas su `id` como `companyId` en el body de `register`.
+
+Para saber cuál de las dos pantallas mostrar, revisa el `roles` que guardaste del `login`/`register` de la sesión actual: `if (roles.includes("Administrator")) { /* mostrar selector de empresa */ } else { /* invitar sin selector */ }`.
+
+**cURL — caso 4 (el común): invitar un compañero de mi propia empresa, sin `companyId`:**
 ```bash
 curl -X POST http://localhost:5296/api/auth/register \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {token}" \
   -d '{"email": "nuevo@test.com", "password": "Password123!", "fullName": "Usuario Nuevo", "role": "Supervisor"}'
 ```
 
-**Response (200 OK):** misma forma que `login`, con `rolePermissions` incluido (ver arriba).
+**cURL — caso 3: un Administrator crea un usuario para una empresa específica:**
+```bash
+curl -X POST http://localhost:5296/api/auth/register \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {tokenDeAdministrator}" \
+  -d '{
+    "email": "gerente@losrobles.com",
+    "password": "Password123!",
+    "fullName": "Gerente Los Robles",
+    "role": "Supervisor",
+    "companyId": "3f2f1a2b-4c5d-6e7f-8a9b-0c1d2e3f4a5b"
+  }'
+```
+
+**Response (200 OK):** misma forma que `login`, con `rolePermissions` y 🆕 `companyId` incluidos (ver sección 1) — el `companyId` de la respuesta es el que efectivamente quedó asignado (útil para confirmar en UI, aunque el front no lo haya mandado).
 
 > `role` sigue siendo un solo string en el request — el registro **no** cambió a aceptar una lista de roles. Si el usuario necesita más de un rol, se le asignan después con `PUT /users/update`.
+
+### 🆕 Nuevos errores de negocio (400, mensaje libre de dominio — sin `ErrorCode` fijo, viene en el texto de `message`)
+
+| Mensaje (contiene) | Cuándo ocurre | Qué debe hacer el front |
+|---|---|---|
+| "Solo un administrador de la plataforma puede crear otro administrador." | Alguien que no es `Administrator` intentó registrar `role: "Administrator"` (y ya existe uno). | No debería pasar si ocultas la opción de rol `Administrator` en el selector de roles para cualquiera que no sea `Administrator`. |
+| "Debes indicar la empresa (CompanyId) para el nuevo usuario." | Un `Administrator` mandó `register` sin `companyId` para un rol que no es `Administrator`. | Valida en el front que `companyId` sea obligatorio antes de enviar, cuando quien llama es `Administrator`. |
+| "La empresa indicada no existe." | El `companyId` mandado no corresponde a ninguna empresa real. | No debería pasar si el selector se alimenta de `GET /managementcompany/getAll` y no de un valor tipeado a mano. |
+| "Tu usuario no pertenece a ninguna empresa; no puedes registrar usuarios." | Caso anómalo: usuario autenticado, no `Administrator`, sin empresa asignada. | Contactar soporte/backoffice — es un estado de datos inconsistente, no un error de UI. |
+| "Debes iniciar sesión para registrar usuarios." | Se llamó sin `Authorization` fuera del caso de bootstrap. | Asegúrate de mandar el header `Authorization: Bearer {token}` en toda invitación de usuario, salvo el registro inicial del primer `Administrator`. |
 
 ---
 
@@ -184,10 +255,25 @@ curl -X GET "http://localhost:5296/api/auth/users/paginated?pageNumber=1&pageSiz
             "roleName": "Administrator",
             "permissions": ["PhysicalStructure", "Owner", "Document", "Guest", "Users", "Roles"]
           }
-        ]
+        ],
+        "companyId": null
+      },
+      {
+        "id": "4a3b2c1d-....",
+        "email": "gerente@losrobles.com",
+        "fullName": "Gerente Los Robles",
+        "roles": ["Supervisor"],
+        "rolePermissions": [
+          {
+            "roleId": "c2d3e4f5-....",
+            "roleName": "Supervisor",
+            "permissions": ["PhysicalStructure", "Owner"]
+          }
+        ],
+        "companyId": "3f2f1a2b-4c5d-6e7f-8a9b-0c1d2e3f4a5b"
       }
     ],
-    "totalCount": 1,
+    "totalCount": 2,
     "pageNumber": 1,
     "pageSize": 10
   },
@@ -196,6 +282,7 @@ curl -X GET "http://localhost:5296/api/auth/users/paginated?pageNumber=1&pageSiz
 }
 ```
 > ⚠️ El objeto paginado **no** trae `totalPages` — calcúlalo en el front: `Math.ceil(totalCount / pageSize)`.
+> 🆕 `companyId` es `null` para usuarios de plataforma (`Administrator`) y un GUID para cualquier otro usuario.
 
 ---
 
@@ -240,23 +327,32 @@ curl -X GET "http://localhost:5296/api/auth/roles/paginated?pageNumber=1&pageSiz
 **Endpoint:** `PUT /api/auth/users/update`
 **Auth:** `Bearer {token}` + rol `Administrator`
 
-**Body (Entrada - UpdateUserDto):**
+**Body (Entrada - UpdateUserDto) — 🆕 campo nuevo opcional `companyId`:**
 ```json
 {
   "id": "3f2f1a2b-....",
   "email": "usuario.editado@test.com",
   "fullName": "Usuario Editado",
-  "roles": ["Supervisor", "Administrator"]
+  "roles": ["Supervisor"],
+  "companyId": "3f2f1a2b-4c5d-6e7f-8a9b-0c1d2e3f4a5b"
 }
 ```
 `roles` es la lista **completa** final de roles del usuario (reemplaza, no hace merge) — si el usuario tenía `["Supervisor"]` y envías `["Administrator"]`, pierde `Supervisor` y gana `Administrator`.
+
+> 🆕 `companyId` reemplaza la empresa actual del usuario. Envía `null` (u omite el campo) para dejarlo sin empresa. **Si `roles` incluye `Administrator`, el backend ignora `companyId` y lo deja en `null`** sin importar qué mandes — un usuario de plataforma nunca pertenece a una empresa.
 
 **cURL:**
 ```bash
 curl -X PUT http://localhost:5296/api/auth/users/update \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer {token}" \
-  -d '{"id": "3f2f1a2b-....", "email": "usuario.editado@test.com", "fullName": "Usuario Editado", "roles": ["Supervisor"]}'
+  -d '{
+    "id": "3f2f1a2b-....",
+    "email": "usuario.editado@test.com",
+    "fullName": "Usuario Editado",
+    "roles": ["Supervisor"],
+    "companyId": "3f2f1a2b-4c5d-6e7f-8a9b-0c1d2e3f4a5b"
+  }'
 ```
 
 **Response (200 OK):**
@@ -268,6 +364,7 @@ curl -X PUT http://localhost:5296/api/auth/users/update \
 - Email ya usado por otro usuario.
 - Intentar quitar el rol `Administrator` al **último** usuario que lo tiene.
 - Un rol de la lista `roles` no existe (debe crearse primero con `create-role`).
+- 🆕 "La empresa indicada no existe." — el `companyId` mandado no corresponde a ninguna empresa real. No debería pasar si el selector se alimenta de `GET /managementcompany/getAll` y no de un valor tipeado a mano.
 
 ---
 
@@ -383,7 +480,18 @@ interface AuthResponseDto {
   expiration: string;              // ISO 8601 DateTime
   roles: string[];
   role: string;                    // = roles[0], se mantiene por compatibilidad
+  companyId: string | null;        // 🆕 UUID — null solo para usuarios con rol Administrator
   rolePermissions: RolePermissionsDto[];  // 🆕
+}
+
+interface AuthRegisterDto {        // 🆕 (request de POST /register)
+  email: string;
+  password: string;
+  fullName: string;
+  role: string;
+  companyId?: string;              // 🆕 UUID — SOLO lo manda un Administrator (ver sección 2).
+                                    // Cualquier otro usuario lo omite: el backend ignora lo que
+                                    // venga acá y usa la empresa de quien está autenticado.
 }
 
 interface RolePermissionsDto {     // 🆕
@@ -398,6 +506,7 @@ interface UserDto {
   fullName: string;
   roles: string[];
   rolePermissions: RolePermissionsDto[];  // 🆕
+  companyId: string | null;               // 🆕 null = usuario de plataforma (Administrator)
 }
 
 interface RoleDto {
@@ -416,6 +525,7 @@ interface UpdateUserDto {          // 🆕
   email: string;                   // requerido, formato email válido
   fullName: string;                // requerido, max 200 chars
   roles: string[];                 // lista completa final (reemplaza)
+  companyId?: string | null;       // 🆕 opcional — ignorado (queda null) si roles incluye Administrator
 }
 
 interface UpdateRoleDto {          // 🆕
@@ -490,6 +600,11 @@ Cualquier otro valor es rechazado por el validador con `400` (`InvalidModuleName
 | `AssignRolePermissionsDto.permissions` y `CreateRoleDto.permissions` reemplazan la lista completa, no son incrementales | `PUT /roles/permissions`, `POST /create-role` |
 | Los permisos se asignan al **rol**, nunca directamente al usuario | Todo el módulo |
 | 🆕 El rol `Administrator` siempre tiene acceso a todos los módulos automáticamente; no se le pueden asignar/restringir permisos | `login`, `register`, `users/paginated`, `roles/paginated`, `PUT /roles/permissions`, `POST /create-role` |
+| 🆕 Un usuario nuevo hereda automáticamente la empresa (`companyId`) de quien lo registra; nunca puede elegir la suya propia | `POST /register` |
+| 🆕 Un usuario con rol `Administrator` nunca queda atado a una empresa — `companyId` siempre se fuerza a `null`, sin importar lo que se envíe | `POST /register`, `PUT /users/update` |
+| 🆕 El `companyId` enviado debe corresponder a una empresa existente (`ManagementCompany`) | `POST /register`, `PUT /users/update` |
+| 🆕 Solo un `Administrator` puede indicar `companyId` explícito al registrar (y solo porque él mismo no pertenece a ninguna empresa) | `POST /register` |
+| 🆕 Solo un `Administrator` puede registrar a otro usuario con rol `Administrator` (salvo el primero del sistema, bootstrap) | `POST /register` |
 
 ---
 

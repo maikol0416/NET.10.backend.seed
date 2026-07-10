@@ -16,4 +16,7 @@ public class UserDto
     /// varios). El front usa esto para dejar elegir con cuál rol quiere trabajar.
     /// </summary>
     public List<RolePermissionsDto> RolePermissions { get; set; } = [];
+
+    /// <summary>Empresa administradora del usuario. Null para usuarios de plataforma (Administrator).</summary>
+    public Guid? CompanyId { get; set; }
 }

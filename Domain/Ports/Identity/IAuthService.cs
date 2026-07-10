@@ -10,11 +10,12 @@ namespace Domain.Ports.Identity;
 public interface IAuthService
 {
     Task<AuthResult> LoginAsync(string email, string password);
-    Task<AuthResult> RegisterAsync(string email, string password, string fullName, string role);
+    Task<AuthResult> RegisterAsync(string email, string password, string fullName, string role, Guid? companyId);
+    Task<bool> AnyAdministratorExistsAsync();
     Task<AuthResult> CreateRoleAsync(string roleName, IEnumerable<ModuleEnum>? initialPermissions = null);
     Task<PaginatedList<UserSummary>> GetUsersPaginatedAsync(int pageNumber, int pageSize);
     Task<PaginatedList<RoleSummary>> GetRolesPaginatedAsync(int pageNumber, int pageSize);
-    Task<AuthResult> UpdateUserAsync(string userId, string email, string fullName, IEnumerable<string> roles);
+    Task<AuthResult> UpdateUserAsync(string userId, string email, string fullName, IEnumerable<string> roles, Guid? companyId);
     Task<AuthResult> DeleteUserAsync(string userId, string requestingUserId);
     Task<AuthResult> UpdateRoleAsync(string roleId, string name);
     Task<AuthResult> DeleteRoleAsync(string roleId);

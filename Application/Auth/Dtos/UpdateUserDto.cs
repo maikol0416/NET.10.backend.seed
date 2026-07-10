@@ -10,4 +10,10 @@ public class UpdateUserDto
     public string Email { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public List<string> Roles { get; set; } = [];
+
+    /// <summary>
+    /// Empresa administradora a la que queda atado el usuario. Se ignora (queda null)
+    /// si Roles incluye Administrator — un usuario de plataforma nunca pertenece a una empresa.
+    /// </summary>
+    public Guid? CompanyId { get; set; }
 }

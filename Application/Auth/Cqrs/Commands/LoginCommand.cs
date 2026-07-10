@@ -46,7 +46,8 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponseDto
                 RoleId = rp.RoleId,
                 RoleName = rp.RoleName,
                 Permissions = rp.Permissions.Select(p => p.ToString()).ToList()
-            }).ToList()
+            }).ToList(),
+            CompanyId = result.CompanyId
         };
     }
 }

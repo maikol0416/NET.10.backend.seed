@@ -6,5 +6,5 @@ namespace Domain.Ports.Identity;
 /// </summary>
 public interface IJwtTokenService
 {
-    Task<string> GenerateTokenAsync(string userId, string email, IList<string> roles);
+    Task<string> GenerateTokenAsync(string userId, string email, IList<string> roles, Guid? companyId = null);
 }

@@ -95,6 +95,7 @@ public static class DependencyInjection
         // ─── Identity Services (Ports → Adapters) ───
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
 
         //Repository — Command side (escritura)
         services.AddScoped<IPhysicalStructureRepository, PhysicalStructureRepository>();

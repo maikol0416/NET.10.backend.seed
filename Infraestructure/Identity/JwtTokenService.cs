@@ -20,7 +20,7 @@ public class JwtTokenService : IJwtTokenService
         _jwtSettings = jwtSettings.Value;
     }
 
-    public Task<string> GenerateTokenAsync(string userId, string email, IList<string> roles)
+    public Task<string> GenerateTokenAsync(string userId, string email, IList<string> roles, Guid? companyId = null)
     {
         var claims = new List<Claim>
         {
@@ -33,6 +33,12 @@ public class JwtTokenService : IJwtTokenService
         foreach (var role in roles)
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
+        }
+
+        // Empresa administradora (tenant) — ausente para usuarios de plataforma (Administrator)
+        if (companyId.HasValue)
+        {
+            claims.Add(new Claim("CompanyId", companyId.Value.ToString()));
         }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));

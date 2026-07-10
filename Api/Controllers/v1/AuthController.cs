@@ -70,6 +70,10 @@ public class AuthController : ControllerBase
 
     /// <summary>
     /// Registra un nuevo usuario y le asigna el rol indicado. Retorna un JWT válido.
+    /// El endpoint queda [AllowAnonymous] únicamente para permitir el bootstrap del primer
+    /// Administrator de la plataforma en una base vacía — el propio RegisterCommandHandler
+    /// cierra esa puerta en cuanto existe al menos un Administrator, y desde ahí exige que
+    /// quien registre esté autenticado (hereda su empresa, o la indica si es Administrator).
     /// </summary>
     [AllowAnonymous]
     [HttpPost("register")]

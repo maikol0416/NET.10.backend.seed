@@ -61,7 +61,7 @@ public class AuthService : IAuthService
         }
 
         var roles = await _userManager.GetRolesAsync(user);
-        var token = await _jwtTokenService.GenerateTokenAsync(user.Id, user.Email!, roles);
+        var token = await _jwtTokenService.GenerateTokenAsync(user.Id, user.Email!, roles, user.CompanyId);
         var rolePermissions = await BuildRolePermissionsSummaryAsync(user);
 
         return new AuthResult(
@@ -72,11 +72,18 @@ public class AuthService : IAuthService
             Expiration: DateTime.UtcNow.AddMinutes(60),
             Errors: null,
             Roles: roles,
-            RolePermissions: rolePermissions
+            RolePermissions: rolePermissions,
+            CompanyId: user.CompanyId
         );
     }
 
-    public async Task<AuthResult> RegisterAsync(string email, string password, string fullName, string role)
+    public async Task<bool> AnyAdministratorExistsAsync()
+    {
+        var admins = await _userManager.GetUsersInRoleAsync(RolePermissionsPolicy.AdministratorRoleName);
+        return admins.Count > 0;
+    }
+
+    public async Task<AuthResult> RegisterAsync(string email, string password, string fullName, string role, Guid? companyId)
     {
         var existingUser = await _userManager.FindByEmailAsync(email);
         if (existingUser != null)
@@ -112,7 +119,10 @@ public class AuthService : IAuthService
         {
             UserName = email,
             Email = email,
-            FullName = fullName
+            FullName = fullName,
+            // Un Administrator es un usuario de plataforma: nunca queda atado a una empresa,
+            // sin importar qué CompanyId le hayan pasado.
+            CompanyId = RolePermissionsPolicy.IsAdministrator(role) ? null : companyId
         };
 
         var result = await _userManager.CreateAsync(user, password);
@@ -146,7 +156,7 @@ public class AuthService : IAuthService
         }
 
         var roles = await _userManager.GetRolesAsync(user);
-        var token = await _jwtTokenService.GenerateTokenAsync(user.Id, user.Email!, roles);
+        var token = await _jwtTokenService.GenerateTokenAsync(user.Id, user.Email!, roles, user.CompanyId);
         var rolePermissions = await BuildRolePermissionsSummaryAsync(user);
 
         return new AuthResult(
@@ -157,7 +167,8 @@ public class AuthService : IAuthService
             Expiration: DateTime.UtcNow.AddMinutes(60),
             Errors: null,
             Roles: roles,
-            RolePermissions: rolePermissions
+            RolePermissions: rolePermissions,
+            CompanyId: user.CompanyId
         );
     }
 
@@ -207,7 +218,7 @@ public class AuthService : IAuthService
         {
             var roles = await _userManager.GetRolesAsync(user);
             var rolePermissions = await BuildRolePermissionsSummaryAsync(user);
-            summaries.Add(new UserSummary(user.Id, user.Email!, user.FullName, roles, rolePermissions));
+            summaries.Add(new UserSummary(user.Id, user.Email!, user.FullName, roles, rolePermissions, user.CompanyId));
         }
 
         return new PaginatedList<UserSummary>(summaries, totalCount, pageNumber, pageSize);
@@ -232,7 +243,7 @@ public class AuthService : IAuthService
         return new PaginatedList<RoleSummary>(summaries, totalCount, pageNumber, pageSize);
     }
 
-    public async Task<AuthResult> UpdateUserAsync(string userId, string email, string fullName, IEnumerable<string> roles)
+    public async Task<AuthResult> UpdateUserAsync(string userId, string email, string fullName, IEnumerable<string> roles, Guid? companyId)
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user == null)
@@ -266,6 +277,9 @@ public class AuthService : IAuthService
         user.Email = email;
         user.UserName = email;
         user.FullName = fullName;
+        // Un Administrator es un usuario de plataforma: nunca queda atado a una empresa,
+        // sin importar qué CompanyId le hayan pasado (mismo criterio que RegisterAsync).
+        user.CompanyId = incomingRoles.Any(RolePermissionsPolicy.IsAdministrator) ? null : companyId;
 
         var updateResult = await _userManager.UpdateAsync(user);
         if (!updateResult.Succeeded)

@@ -6,6 +6,7 @@ using Scalar.AspNetCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddDependencyInjectionInfrastructureEf(builder.Configuration);
 builder.Services.AddDependencyInjectionApplication();
 builder.Services.AddControllers();
