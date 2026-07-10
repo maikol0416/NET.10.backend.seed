@@ -10,6 +10,7 @@ public static class PhysicalStructureMapper
     {
         cnf.CreateMap<PhysicalStructureDto, PhysicalStructureAgg>()
             .ConstructUsing(src => new PhysicalStructureAgg(
+                src.CompanyId!.Value,
                 src.Name,
                 src.Nit,
                 src.UnitCount,
@@ -40,6 +41,7 @@ public static class PhysicalStructureMapper
                                 : new ApartmentEntity(a.Number, a.Size, a.IdOwner)).ToList() : new List<ApartmentEntity>()))
                     .ToList()
             ))
+            .ForMember(dest => dest.CompanyId,   opt => opt.Ignore())
             .ForMember(dest => dest.Name,        opt => opt.Ignore())
             .ForMember(dest => dest.CommonsAreas, opt => opt.Ignore())
             .ForMember(dest => dest.Location,    opt => opt.Ignore())
@@ -56,6 +58,7 @@ public static class PhysicalStructureMapper
 
         cnf.CreateMap<PhysicalStructureAgg, PhysicalStructureDto>()
             .ForMember(dest => dest.Id,             opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.CompanyId,      opt => opt.MapFrom(src => src.CompanyId))
             .ForMember(dest => dest.Name,           opt => opt.MapFrom(src => src.Name))
             .ForMember(dest => dest.Nit,            opt => opt.MapFrom(src => src.Nit))
             .ForMember(dest => dest.UnitCount,      opt => opt.MapFrom(src => src.UnitCount))

@@ -3,6 +3,13 @@ namespace Application.Dto;
 public class PhysicalStructureDto
 {
     public Guid? Id { get; set; }
+
+    /// <summary>
+    /// Empresa dueña de la estructura. El backend siempre lo sobrescribe con la
+    /// empresa del usuario autenticado (StampCompany) — no confíes en lo que
+    /// mande el cliente en Create/Update, es solo informativo en las lecturas.
+    /// </summary>
+    public Guid? CompanyId { get; set; }
     public string Name { get; set; }
     public string Nit { get; set; }
     public int UnitCount { get; set; }

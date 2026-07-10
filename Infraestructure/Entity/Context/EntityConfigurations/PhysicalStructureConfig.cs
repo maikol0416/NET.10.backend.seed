@@ -19,7 +19,12 @@ public class PhysicalStructureConfig :IEntityTypeConfiguration<PhysicalStructure
 
         builder.Property(p => p.UpdateAt)
             .IsRequired(false);
-        
+
+        builder.Property(p => p.CompanyId)
+            .IsRequired();
+
+        builder.HasIndex(p => p.CompanyId);
+
         builder.Property(p => p.Name)
             .IsRequired()
             .HasMaxLength(150);

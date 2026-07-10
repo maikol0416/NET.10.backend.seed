@@ -8,7 +8,8 @@ public class PhysicalStructureAgg : AggregateRoot
     {
         
     }
-    public PhysicalStructureAgg(string name,
+    public PhysicalStructureAgg(Guid companyId,
+                                string name,
                                 string nit,
                                 int unitCount,
                                 LocationValueObject location,
@@ -16,6 +17,7 @@ public class PhysicalStructureAgg : AggregateRoot
                                 List<TowerEntity> towers
                                 ):base()
     {
+        CompanyId = companyId;
         Name = name;
         Nit = nit;
         UnitCount = unitCount;
@@ -25,6 +27,13 @@ public class PhysicalStructureAgg : AggregateRoot
         ExcecuteDomainInvariants();
 
     }
+
+    /// <summary>
+    /// Empresa administradora (tenant) dueña de esta estructura física.
+    /// Una empresa puede tener muchas estructuras; una estructura pertenece a una sola
+    /// empresa, y esa pertenencia es inmutable una vez creada (no se "traspasa").
+    /// </summary>
+    public Guid CompanyId { get; private set; }
     public  string Name { get; private set; }
     public string Nit { get; set; }
     public int UnitCount { get; set; }
@@ -100,6 +109,9 @@ public class PhysicalStructureAgg : AggregateRoot
 
     protected override void ExcecuteDomainInvariants()
     {
+        if (CompanyId == Guid.Empty)
+            throw new DomainException("La estructura física debe pertenecer a una empresa.");
+
         if (string.IsNullOrWhiteSpace(Name))
             throw new DomainException("La estructura física debe tener un nombre.");
 

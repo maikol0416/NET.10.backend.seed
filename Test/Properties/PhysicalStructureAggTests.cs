@@ -29,14 +29,17 @@ public class PhysicalStructureAggTests
         new("Torre 2", 15),
     ];
 
+    private static readonly Guid ValidCompanyId = Guid.NewGuid();
+
     private static PhysicalStructureAgg CreateValid(
+        Guid?  companyId     = null,
         string name          = "Torres del Parque",
         string nit           = "900123456-7",
         int    unitCount     = 50,
         LocationValueObject? location    = null,
         List<CommonAreaEntity>? areas = null,
         List<TowerEntity>? towers = null) =>
-        new(name, nit, unitCount, location ?? ValidLocation(), areas ?? ValidCommonAreas(), towers ?? ValidTowers());
+        new(companyId ?? ValidCompanyId, name, nit, unitCount, location ?? ValidLocation(), areas ?? ValidCommonAreas(), towers ?? ValidTowers());
 
     // ─────────────────────────────────────────────
     // Happy Path
@@ -152,12 +155,41 @@ public class PhysicalStructureAggTests
     {
         // Act
         var act = () => new PhysicalStructureAgg(
-            "Torres del Norte", "900000001-1", 10, null!, ValidCommonAreas(), ValidTowers());
+            ValidCompanyId, "Torres del Norte", "900000001-1", 10, null!, ValidCommonAreas(), ValidTowers());
 
         // Assert
         act.Should().ThrowExactly<DomainException>()
            .WithMessage("*ubicación*",
            "la ubicación geográfica es obligatoria para una estructura física.");
+    }
+
+    // ─────────────────────────────────────────────
+    // Guard Clause — CompanyId obligatorio (multi-tenant)
+    // ─────────────────────────────────────────────
+
+    [Fact]
+    public void Constructor_WithEmptyCompanyId_ShouldThrowDomainException()
+    {
+        // Act
+        var act = () => CreateValid(companyId: Guid.Empty);
+
+        // Assert
+        act.Should().ThrowExactly<DomainException>()
+           .WithMessage("*empresa*",
+           "una estructura física siempre debe pertenecer a una empresa.");
+    }
+
+    [Fact]
+    public void Constructor_WithValidCompanyId_ShouldAssignIt()
+    {
+        // Arrange
+        var companyId = Guid.NewGuid();
+
+        // Act
+        var agg = CreateValid(companyId: companyId);
+
+        // Assert
+        agg.CompanyId.Should().Be(companyId);
     }
 
     // ─────────────────────────────────────────────
