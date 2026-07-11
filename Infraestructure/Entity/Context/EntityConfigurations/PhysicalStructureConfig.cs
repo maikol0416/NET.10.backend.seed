@@ -36,6 +36,10 @@ public class PhysicalStructureConfig :IEntityTypeConfiguration<PhysicalStructure
         builder.Property(p => p.UnitCount)
             .IsRequired();
 
+        builder.Property(p => p.PathImg)
+            .IsRequired(false)
+            .HasMaxLength(500);
+
         builder.OwnsOne(p => p.Location, locationBuilder =>
         {
             locationBuilder.ToTable("Location");

@@ -12,6 +12,7 @@ using Infraestructure.Repository.Properties;
 using Infraestructure.Repository.DocumentManagement;
 using Infraestructure.Repository.People;
 using Infraestructure.Repository.Tenancy;
+using Infraestructure.Storage;
 
 namespace Infraestructure.Entity;
 
@@ -96,6 +97,7 @@ public static class DependencyInjection
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IImageStorageService, LocalImageStorageService>();
 
         //Repository — Command side (escritura)
         services.AddScoped<IPhysicalStructureRepository, PhysicalStructureRepository>();

@@ -14,7 +14,8 @@ public class PhysicalStructureAgg : AggregateRoot
                                 int unitCount,
                                 LocationValueObject location,
                                 List<CommonAreaEntity> commonAreas,
-                                List<TowerEntity> towers
+                                List<TowerEntity> towers,
+                                string? pathImg = null
                                 ):base()
     {
         CompanyId = companyId;
@@ -24,6 +25,7 @@ public class PhysicalStructureAgg : AggregateRoot
         CommonsAreas = commonAreas;
         Location = location;
         Towers = towers ?? new List<TowerEntity>();
+        PathImg = pathImg;
         ExcecuteDomainInvariants();
 
     }
@@ -41,15 +43,19 @@ public class PhysicalStructureAgg : AggregateRoot
     public LocationValueObject Location { get; private set; }
     public List<TowerEntity> Towers { get; private set; }
 
+    /// <summary>Ruta local (relativa) de la imagen de la estructura física. Opcional.</summary>
+    public string? PathImg { get; private set; }
+
     /// <summary>
     /// Actualiza los campos básicos de la estructura física.
     /// Las áreas comunes y torres se sincronizan a través de sus respectivos métodos.
     /// </summary>
-    public void Update(string name, string nit, int unitCount)
+    public void Update(string name, string nit, int unitCount, string? pathImg)
     {
         Name = name;
         Nit = nit;
         UnitCount = unitCount;
+        PathImg = pathImg;
         ExcecuteDomainInvariants();
     }
 

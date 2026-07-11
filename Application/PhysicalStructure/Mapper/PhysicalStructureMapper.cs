@@ -39,13 +39,15 @@ public static class PhysicalStructureMapper
                             t.Apartments != null ? t.Apartments.Select(a => a.Id.HasValue && a.Id.Value != Guid.Empty
                                 ? new ApartmentEntity(a.Id.Value, a.Number, a.Size, a.IdOwner)
                                 : new ApartmentEntity(a.Number, a.Size, a.IdOwner)).ToList() : new List<ApartmentEntity>()))
-                    .ToList()
+                    .ToList(),
+                src.PathImg
             ))
             .ForMember(dest => dest.CompanyId,   opt => opt.Ignore())
             .ForMember(dest => dest.Name,        opt => opt.Ignore())
             .ForMember(dest => dest.CommonsAreas, opt => opt.Ignore())
             .ForMember(dest => dest.Location,    opt => opt.Ignore())
             .ForMember(dest => dest.Towers,      opt => opt.Ignore())
+            .ForMember(dest => dest.PathImg,     opt => opt.Ignore())
             // Generación masiva de apartamentos: reemplaza cualquier apartamento
             // mapeado manualmente en las torres que traigan ApartmentForFloors.
             .AfterMap((src, dest) =>
@@ -67,6 +69,7 @@ public static class PhysicalStructureMapper
             .ForMember(dest => dest.Country,        opt => opt.MapFrom(src => src.Location.Country))
             .ForMember(dest => dest.City,           opt => opt.MapFrom(src => src.Location.City))
             .ForMember(dest => dest.Neighborhood,   opt => opt.MapFrom(src => src.Location.Neighborhood))
+            .ForMember(dest => dest.PathImg,        opt => opt.MapFrom(src => src.PathImg))
             .ForMember(dest => dest.CommonAreas,    opt => opt.MapFrom(src =>
                 src.CommonsAreas
                     .Select(ca => new CommonAreaDto { Name = ca.Name, Description = ca.Description })

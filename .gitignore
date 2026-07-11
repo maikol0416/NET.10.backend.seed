@@ -361,3 +361,6 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 .DS_Store
+
+# Imágenes subidas en runtime por LocalImageStorageService (PhysicalStructure) — no versionar
+Api/wwwroot/uploads/physical-structures/

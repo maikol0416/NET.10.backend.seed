@@ -38,8 +38,9 @@ public class PhysicalStructureAggTests
         int    unitCount     = 50,
         LocationValueObject? location    = null,
         List<CommonAreaEntity>? areas = null,
-        List<TowerEntity>? towers = null) =>
-        new(companyId ?? ValidCompanyId, name, nit, unitCount, location ?? ValidLocation(), areas ?? ValidCommonAreas(), towers ?? ValidTowers());
+        List<TowerEntity>? towers = null,
+        string? pathImg = null) =>
+        new(companyId ?? ValidCompanyId, name, nit, unitCount, location ?? ValidLocation(), areas ?? ValidCommonAreas(), towers ?? ValidTowers(), pathImg);
 
     // ─────────────────────────────────────────────
     // Happy Path
@@ -193,6 +194,30 @@ public class PhysicalStructureAggTests
     }
 
     // ─────────────────────────────────────────────
+    // PathImg — opcional, sin invariante
+    // ─────────────────────────────────────────────
+
+    [Fact]
+    public void Constructor_WithoutPathImg_ShouldCreateSuccessfullyWithNullPathImg()
+    {
+        // Act — la imagen es opcional, no debe exigirse en la construcción.
+        var agg = CreateValid();
+
+        // Assert
+        agg.PathImg.Should().BeNull();
+    }
+
+    [Fact]
+    public void Constructor_WithPathImg_ShouldAssignIt()
+    {
+        // Act
+        var agg = CreateValid(pathImg: "/uploads/physical-structures/foo.png");
+
+        // Assert
+        agg.PathImg.Should().Be("/uploads/physical-structures/foo.png");
+    }
+
+    // ─────────────────────────────────────────────
     // Encapsulamiento — constructor ORM
     // ─────────────────────────────────────────────
 
@@ -236,12 +261,13 @@ public class PhysicalStructureAggTests
         var originalTowers = agg.Towers.ToList();
 
         // Act
-        agg.Update("Nuevo Nombre", "900987654-3", 100);
+        agg.Update("Nuevo Nombre", "900987654-3", 100, "/uploads/physical-structures/nuevo.png");
 
         // Assert
         agg.Name.Should().Be("Nuevo Nombre");
         agg.Nit.Should().Be("900987654-3");
         agg.UnitCount.Should().Be(100);
+        agg.PathImg.Should().Be("/uploads/physical-structures/nuevo.png");
         agg.Location.Should().BeEquivalentTo(originalLocation);
         
         // Ensure common areas untouched
@@ -258,7 +284,7 @@ public class PhysicalStructureAggTests
         var agg = CreateValid(name: "Torres Originales");
 
         // Act
-        var act = () => agg.Update("", "900987654-3", 100);
+        var act = () => agg.Update("", "900987654-3", 100, null);
 
         // Assert
         act.Should().ThrowExactly<DomainException>()

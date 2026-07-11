@@ -41,6 +41,9 @@ app.UseMiddleware<ExceptionHandlerMiddleware>();
 
 app.UseHttpsRedirection();
 
+// Sirve wwwroot/uploads/* (imágenes guardadas por LocalImageStorageService) como archivos estáticos
+app.UseStaticFiles();
+
 // CORS debe ir antes de Authentication/Authorization
 app.UseCors("AllowFrontend");
 
