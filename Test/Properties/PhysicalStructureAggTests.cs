@@ -39,8 +39,9 @@ public class PhysicalStructureAggTests
         LocationValueObject? location    = null,
         List<CommonAreaEntity>? areas = null,
         List<TowerEntity>? towers = null,
-        string? pathImg = null) =>
-        new(companyId ?? ValidCompanyId, name, nit, unitCount, location ?? ValidLocation(), areas ?? ValidCommonAreas(), towers ?? ValidTowers(), pathImg);
+        string? pathImg = null,
+        string? administratorUserId = null) =>
+        new(companyId ?? ValidCompanyId, name, nit, unitCount, location ?? ValidLocation(), areas ?? ValidCommonAreas(), towers ?? ValidTowers(), pathImg, administratorUserId);
 
     // ─────────────────────────────────────────────
     // Happy Path
@@ -261,13 +262,14 @@ public class PhysicalStructureAggTests
         var originalTowers = agg.Towers.ToList();
 
         // Act
-        agg.Update("Nuevo Nombre", "900987654-3", 100, "/uploads/physical-structures/nuevo.png");
+        agg.Update("Nuevo Nombre", "900987654-3", 100, "/uploads/physical-structures/nuevo.png", "user-123");
 
         // Assert
         agg.Name.Should().Be("Nuevo Nombre");
         agg.Nit.Should().Be("900987654-3");
         agg.UnitCount.Should().Be(100);
         agg.PathImg.Should().Be("/uploads/physical-structures/nuevo.png");
+        agg.AdministratorUserId.Should().Be("user-123");
         agg.Location.Should().BeEquivalentTo(originalLocation);
         
         // Ensure common areas untouched
@@ -284,11 +286,77 @@ public class PhysicalStructureAggTests
         var agg = CreateValid(name: "Torres Originales");
 
         // Act
-        var act = () => agg.Update("", "900987654-3", 100, null);
+        var act = () => agg.Update("", "900987654-3", 100, null, null);
 
         // Assert
         act.Should().ThrowExactly<DomainException>()
            .WithMessage("*nombre*", "el nombre no puede ser vacío al actualizar.");
+    }
+
+    // ─────────────────────────────────────────────
+    // AdministratorUserId — opcional, mutable, referencia a AspNetUsers
+    // ─────────────────────────────────────────────
+
+    [Fact]
+    public void Constructor_WithoutAdministratorUserId_ShouldCreateSuccessfullyWithNullValue()
+    {
+        // Act — es válido no tener administrador asignado todavía.
+        var agg = CreateValid();
+
+        // Assert
+        agg.AdministratorUserId.Should().BeNull();
+    }
+
+    [Fact]
+    public void Constructor_WithAdministratorUserId_ShouldAssignIt()
+    {
+        // Act
+        var agg = CreateValid(administratorUserId: "aspnetuser-id-123");
+
+        // Assert
+        agg.AdministratorUserId.Should().Be("aspnetuser-id-123");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Constructor_WithWhitespaceAdministratorUserId_ShouldThrowDomainException(string invalidId)
+    {
+        // Act
+        var act = () => CreateValid(administratorUserId: invalidId);
+
+        // Assert
+        act.Should().ThrowExactly<DomainException>()
+           .WithMessage("*administrador*",
+           "un identificador de administrador vacío no es válido; debe ser null o un Id real.");
+    }
+
+    [Fact]
+    public void Update_WithAdministratorUserId_ShouldReassignIt()
+    {
+        // Arrange — la estructura nace sin administrador asignado.
+        var agg = CreateValid();
+
+        // Act
+        agg.Update(agg.Name, agg.Nit, agg.UnitCount, agg.PathImg, "new-admin-user-id");
+
+        // Assert
+        agg.AdministratorUserId.Should().Be("new-admin-user-id",
+            "el administrador puede asignarse o reasignarse en cualquier momento.");
+    }
+
+    [Fact]
+    public void Update_WithNullAdministratorUserId_ShouldClearIt()
+    {
+        // Arrange — la estructura ya tiene administrador asignado.
+        var agg = CreateValid(administratorUserId: "old-admin-user-id");
+
+        // Act
+        agg.Update(agg.Name, agg.Nit, agg.UnitCount, agg.PathImg, null);
+
+        // Assert
+        agg.AdministratorUserId.Should().BeNull(
+            "debe poder desasignarse el administrador enviando null.");
     }
 
     // ─────────────────────────────────────────────

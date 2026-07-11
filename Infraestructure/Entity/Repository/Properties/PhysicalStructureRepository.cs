@@ -28,7 +28,7 @@ public class PhysicalStructureRepository: BaseRepositiry<PhysicalStructureAgg>, 
             .FirstOrDefaultAsync(p => p.Id == ent.Id)
             ?? throw new Exception($"No se encontró la estructura física con Id {ent.Id} para actualizar.");
 
-        tracked.Update(ent.Name, ent.Nit, ent.UnitCount, ent.PathImg);
+        tracked.Update(ent.Name, ent.Nit, ent.UnitCount, ent.PathImg, ent.AdministratorUserId);
         tracked.UpdateTowers(ent.Towers);
         tracked.UpdateCommonsAreas(ent.CommonsAreas);
 

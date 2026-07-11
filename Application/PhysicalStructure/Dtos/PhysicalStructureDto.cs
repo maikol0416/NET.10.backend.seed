@@ -34,4 +34,11 @@ public class PhysicalStructureDto
     /// valor que el cliente mande acá se ignora.
     /// </summary>
     public string? PathImg { get; set; }
+
+    /// <summary>
+    /// Id del usuario (AspNetUsers) asignado como administrador de la estructura física.
+    /// Lo asigna el administrador de la empresa; es opcional (puede no haber administrador
+    /// asignado todavía) y puede reasignarse en cualquier Update.
+    /// </summary>
+    public string? AdministratorUserId { get; set; }
 }

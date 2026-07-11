@@ -40,6 +40,17 @@ public class PhysicalStructureConfig :IEntityTypeConfiguration<PhysicalStructure
             .IsRequired(false)
             .HasMaxLength(500);
 
+        // Id del usuario (AspNetUsers, BC Identity) asignado como administrador de la
+        // estructura. Ancho de columna igual al Id de AspNetUsers (nvarchar(450)) para que
+        // la FK física agregada manualmente en la migración pueda referenciarlo.
+        // No se modela como HasOne/HasForeignKey de EF Core porque AspNetUsers pertenece
+        // a IdentityAppDbContext, un DbContext y modelo distintos (ver EntityDBSets).
+        builder.Property(p => p.AdministratorUserId)
+            .IsRequired(false)
+            .HasMaxLength(450);
+
+        builder.HasIndex(p => p.AdministratorUserId);
+
         builder.OwnsOne(p => p.Location, locationBuilder =>
         {
             locationBuilder.ToTable("Location");

@@ -15,7 +15,8 @@ public class PhysicalStructureAgg : AggregateRoot
                                 LocationValueObject location,
                                 List<CommonAreaEntity> commonAreas,
                                 List<TowerEntity> towers,
-                                string? pathImg = null
+                                string? pathImg = null,
+                                string? administratorUserId = null
                                 ):base()
     {
         CompanyId = companyId;
@@ -26,6 +27,7 @@ public class PhysicalStructureAgg : AggregateRoot
         Location = location;
         Towers = towers ?? new List<TowerEntity>();
         PathImg = pathImg;
+        AdministratorUserId = administratorUserId;
         ExcecuteDomainInvariants();
 
     }
@@ -47,15 +49,24 @@ public class PhysicalStructureAgg : AggregateRoot
     public string? PathImg { get; private set; }
 
     /// <summary>
+    /// Id del usuario (AspNetUsers, BC Identity) asignado como administrador de esta
+    /// estructura física. Lo asigna el administrador de la empresa y es opcional: una
+    /// estructura puede no tener administrador asignado todavía, y puede reasignarse
+    /// en cualquier momento mediante <see cref="Update"/>.
+    /// </summary>
+    public string? AdministratorUserId { get; private set; }
+
+    /// <summary>
     /// Actualiza los campos básicos de la estructura física.
     /// Las áreas comunes y torres se sincronizan a través de sus respectivos métodos.
     /// </summary>
-    public void Update(string name, string nit, int unitCount, string? pathImg)
+    public void Update(string name, string nit, int unitCount, string? pathImg, string? administratorUserId)
     {
         Name = name;
         Nit = nit;
         UnitCount = unitCount;
         PathImg = pathImg;
+        AdministratorUserId = administratorUserId;
         ExcecuteDomainInvariants();
     }
 
@@ -126,5 +137,8 @@ public class PhysicalStructureAgg : AggregateRoot
 
         if (Location == null)
             throw new DomainException("La ubicación es obligatoria.");
+
+        if (AdministratorUserId != null && string.IsNullOrWhiteSpace(AdministratorUserId))
+            throw new DomainException("El administrador asignado no puede ser un identificador vacío.");
     }
 }

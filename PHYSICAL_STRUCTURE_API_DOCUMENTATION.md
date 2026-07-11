@@ -1,11 +1,25 @@
-# Physical Structure API — Documentación técnica de cambios (Multi-tenant + Imagen)
+# Physical Structure API — Documentación técnica de cambios (Multi-tenant + Imagen + Administrador asignado)
 
 ## URL Base
 ```
 http://localhost:5296/api/physicalstructure
 ```
 
-## 🆕 Última actualización — imagen de la estructura física
+## 🆕 Última actualización — administrador asignado a la estructura física (`administratorUserId`)
+
+Se agregó un campo para asignar, a una estructura física, el usuario (del BC Identity, tabla `AspNetUsers`) que actúa como su administrador. Resumen para integrar:
+
+- **`create` y `update` ganan el campo de entrada `administratorUserId`** — un `string` (no un UUID: es el `Id` de `AspNetUsers`, que es texto), **opcional/nullable**. Puedes omitirlo, mandarlo en `null`, o mandar el `id` de un usuario real.
+- **Todas las respuestas (`create`, `update`, `getAll`, `getById`, `getPaginated`) ganan el campo `administratorUserId`** en cada estructura — viene en `null` si todavía no se le asignó administrador.
+- **Es mutable en cualquier momento**: a diferencia de `companyId` (inmutable, el backend lo controla), `administratorUserId` sí se actualiza con lo que mandes en `update` — incluido reemplazarlo por otro usuario o volverlo a `null` para "desasignar".
+- **El backend NO valida que el usuario tenga un rol en particular** (ej. no exige que sea `Property Administrator`) — acepta cualquier `Id` de `AspNetUsers` que exista. La restricción de "qué usuarios mostrar en el selector" es responsabilidad del front (ver más abajo de dónde sacar la lista).
+- **De dónde sale el valor a enviar:** usa `GET /api/auth/users/by-role?role={rol}` (documentado en `AUTH_API_DOCUMENTATION.md`, sección 11) para listar los usuarios candidatos (ej. `role=Property Administrator`) y toma el campo `id` (`string`) de cada uno — ese es el valor que se manda como `administratorUserId`.
+- **Validación de forma:** si lo mandas, no puede exceder 450 caracteres (ancho de columna de `AspNetUsers.Id`) ni venir como cadena vacía o solo espacios — en ese caso el backend responde `400`. Para "no asignar todavía" o "quitar el administrador", **omite el campo o mándalo en `null`**, nunca `""`.
+- Detalle completo, con ejemplos de request/response, en las secciones 1, 2 y 3 más abajo, y en la nueva sección "Cómo asignar el administrador" al final.
+
+---
+
+## 🆕 Actualización anterior — imagen de la estructura física
 
 Se agregó soporte de imagen a `PhysicalStructure`. Resumen para integrar:
 
@@ -43,6 +57,7 @@ Relación de negocio: **una empresa puede tener muchas estructuras físicas; una
 
 | Elemento | Estado | Detalle |
 |---|---|---|
+| `PhysicalStructureDto.administratorUserId` | 🆕 AGREGADO | `string \| null`. **Entrada y salida** — se manda en `create`/`update` y viene en todas las respuestas. A diferencia de `companyId`, el backend **sí respeta** el valor que mandes. |
 | `PhysicalStructureDto.companyId` | 🆕 AGREGADO | `string \| null`. Visible en todas las respuestas (`create`, `update`, `getById`, `getAll`, `getPaginated`). |
 | `PhysicalStructureDto.imageBytes` | 🆕 AGREGADO | `string` (base64) — **solo entrada**, opcional, en `create`/`update`. Nunca aparece en ninguna respuesta. |
 | `PhysicalStructureDto.pathImg` | 🆕 AGREGADO | `string \| null` — **URL absoluta y completa**, solo lectura, calculada siempre por el backend. Visible en todas las respuestas. |
@@ -58,7 +73,7 @@ Relación de negocio: **una empresa puede tener muchas estructuras físicas; una
 **Endpoint:** `POST /api/physicalstructure/create`
 **Auth:** `Bearer {token}` (cualquier usuario autenticado, salvo `Administrator` — ver caso de error abajo)
 
-**Body:** igual que antes, más el campo opcional 🆕 `imageBytes`. Si incluyes `companyId` o `pathImg`, se ignoran.
+**Body:** igual que antes, más los campos opcionales 🆕 `imageBytes` y 🆕 `administratorUserId`. Si incluyes `companyId` o `pathImg`, se ignoran.
 
 ```json
 {
@@ -72,10 +87,12 @@ Relación de negocio: **una empresa puede tener muchas estructuras físicas; una
   "neighborhood": "Laureles",
   "commonAreas": [],
   "towers": [],
-  "imageBytes": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+  "imageBytes": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+  "administratorUserId": "4a3b2c1d-e5f6-47a8-9b0c-1d2e3f4a5b6c"
 }
 ```
 > 🆕 `imageBytes` es **opcional** — si no tienes imagen todavía, omite el campo (o manda `null`). Ver "Cómo enviar la imagen" más abajo para saber cómo se genera ese string.
+> 🆕 `administratorUserId` es **opcional** — si la estructura todavía no tiene administrador asignado, omite el campo (o manda `null`). **Es un `string`** (el `Id` de `AspNetUsers`), no un UUID típico de dominio — cópialo tal cual viene del endpoint de usuarios, sin transformarlo. Ver "Cómo asignar el administrador" más abajo.
 
 **cURL:**
 ```bash
@@ -93,11 +110,12 @@ curl -X POST http://localhost:5296/api/physicalstructure/create \
     "neighborhood": "Laureles",
     "commonAreas": [],
     "towers": [],
-    "imageBytes": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+    "imageBytes": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+    "administratorUserId": "4a3b2c1d-e5f6-47a8-9b0c-1d2e3f4a5b6c"
   }'
 ```
 
-**Response (200 OK) — 🆕 `companyId` y `pathImg` en la respuesta:**
+**Response (200 OK) — 🆕 `companyId`, `pathImg` y `administratorUserId` en la respuesta:**
 ```json
 {
   "data": {
@@ -112,6 +130,7 @@ curl -X POST http://localhost:5296/api/physicalstructure/create \
     "city": "Medellín",
     "neighborhood": "Laureles",
     "pathImg": "http://localhost:5296/uploads/physical-structures/7d4c2a9e-1b3f-4e6a-8c5d-2f7a9b1c3e5a.png",
+    "administratorUserId": "4a3b2c1d-e5f6-47a8-9b0c-1d2e3f4a5b6c",
     "commonAreas": [],
     "towers": []
   },
@@ -119,13 +138,19 @@ curl -X POST http://localhost:5296/api/physicalstructure/create \
   "message": "Operation carried out successfully."
 }
 ```
-El `companyId` que vuelve es siempre el de la empresa del usuario que hizo la llamada — **nunca** el que se haya mandado en el request. `pathImg` ya viene como **URL absoluta completa** (esquema + host + ruta), lista para usar directo en un `<img src>`; es `null` si no se mandó `imageBytes`. El response **nunca** trae `imageBytes` de vuelta.
+El `companyId` que vuelve es siempre el de la empresa del usuario que hizo la llamada — **nunca** el que se haya mandado en el request. `pathImg` ya viene como **URL absoluta completa** (esquema + host + ruta), lista para usar directo en un `<img src>`; es `null` si no se mandó `imageBytes`. `administratorUserId` viene exactamente lo que se mandó (o `null` si no se mandó). El response **nunca** trae `imageBytes` de vuelta.
 
 **🆕 Nuevo error de negocio (400):**
 ```json
 { "status": false, "message": "Tu usuario no pertenece a ninguna empresa; no puedes crear ni modificar este recurso." }
 ```
 Ocurre cuando quien llama es un `Administrator` (o, en un caso anómalo, cualquier usuario sin empresa asignada).
+
+**🆕 Error de validación si `administratorUserId` viene vacío (400):**
+```json
+{ "status": false, "message": "[{\"PropertyName\":\"AdministratorUserId\",\"ErrorMessage\":\"El identificador del administrador no puede exceder los 450 caracteres.\", ...}]" }
+```
+Este caso puntual (`MaximumLength`) solo se dispara si mandas una cadena de más de 450 caracteres. Si mandas `administratorUserId: ""` (cadena vacía, no `null`), el error es distinto y viene del dominio: `400` con mensaje `"El administrador asignado no puede ser un identificador vacío."` — **para "sin administrador" usa siempre `null` o simplemente omite el campo, nunca `""`**.
 
 ---
 
@@ -134,6 +159,11 @@ Ocurre cuando quien llama es un `Administrator` (o, en un caso anómalo, cualqui
 **Auth:** `Bearer {token}` (mismas reglas que create)
 
 Igual que `create`: si mandas `companyId` o `pathImg`, se ignoran — el backend mantiene el `companyId` que ya tenía la estructura (recuerda: es inmutable, no se puede "trasladar" a otra empresa desde este endpoint).
+
+🆕 **`administratorUserId` sí se respeta en `update`** — a diferencia de `companyId`/`pathImg`, este campo **no** tiene un valor "protegido" por el backend:
+- Mándalo con un nuevo `Id` de usuario para **reasignar** el administrador.
+- Mándalo en `null` (explícito) para **quitar** el administrador asignado.
+- **Omítelo del body** para dejarlo **tal cual estaba** — a diferencia de `pathImg` (que se conserva solo si omites `imageBytes`), aquí aplica la regla normal de PUT: si el campo no viene en el JSON, .NET lo deserializa como `null` en el DTO, así que **omitir el campo tiene el mismo efecto que mandarlo en `null`: lo borra**. Si tu intención es "no tocar el administrador actual", tu formulario debe recuperar primero el valor actual (`GET /getById`) y reenviarlo tal cual en el `update`, igual que haces con el resto de campos del formulario de edición.
 
 ### 2a. Actualizar SIN cambiar la imagen (caso más común)
 🆕 Omite `imageBytes` del todo (o mándalo en `null`) — el backend conserva el `pathImg` que ya tenía la estructura, **no lo borra**.
@@ -218,7 +248,7 @@ curl -X PUT http://localhost:5296/api/physicalstructure/update \
 **Endpoints:** `GET /getById?id={id}`, `GET /getAll`, `GET /getPaginated?pageNumber=1&pageSize=10`
 **Auth:** `Bearer {token}`
 
-Mismos parámetros y forma de respuesta que antes, **más los campos `companyId` y 🆕 `pathImg`** en cada estructura. La diferencia real es el **filtrado automático**:
+Mismos parámetros y forma de respuesta que antes, **más los campos `companyId`, 🆕 `pathImg` y 🆕 `administratorUserId`** en cada estructura. La diferencia real es el **filtrado automático**:
 
 ```bash
 curl -X GET "http://localhost:5296/api/physicalstructure/getPaginated?pageNumber=1&pageSize=10" \
@@ -234,12 +264,14 @@ curl -X GET "http://localhost:5296/api/physicalstructure/getPaginated?pageNumber
         "companyId": "3f2f1a2b-4c5d-6e7f-8a9b-0c1d2e3f4a5b",
         "name": "Edificio Central Medellín",
         "pathImg": "http://localhost:5296/uploads/physical-structures/a1b2c3d4-5678-90ab-cdef-1234567890ab.png",
+        "administratorUserId": "4a3b2c1d-e5f6-47a8-9b0c-1d2e3f4a5b6c",
         "...": "resto de campos sin cambios"
       },
       {
         "id": "3c4d5e6f-....",
         "name": "Conjunto Los Alamos",
         "pathImg": null,
+        "administratorUserId": null,
         "...": "resto de campos sin cambios"
       }
     ],
@@ -256,6 +288,7 @@ curl -X GET "http://localhost:5296/api/physicalstructure/getPaginated?pageNumber
 - Si el usuario logueado es `Administrator`, ve estructuras de **todas** las empresas — útil para una vista de soporte/backoffice, si la necesitas.
 - `getById` de una estructura de otra empresa devuelve **no encontrado**, no un `403` — no reveles al front que la estructura existe pero no es accesible; simplemente no aparece.
 - 🆕 `pathImg` viene en `null` cuando la estructura todavía no tiene imagen guardada.
+- 🆕 `administratorUserId` viene en `null` cuando la estructura todavía no tiene administrador asignado.
 
 ---
 
@@ -299,6 +332,54 @@ No hace falta mandar el nombre del archivo ni el tipo MIME — el backend detect
 
 ---
 
+## 🆕 Cómo asignar el administrador (`administratorUserId`)
+
+`administratorUserId` guarda el `Id` (`string`) de un usuario del sistema (tabla `AspNetUsers`, BC Identity) — **no** un recurso propio de `PhysicalStructure`. El front necesita dos cosas: un selector para elegir el usuario, y saber qué valor mandar.
+
+### 1. Alimentar el selector
+
+Usa el endpoint de Auth documentado en [`AUTH_API_DOCUMENTATION.md`](./AUTH_API_DOCUMENTATION.md) (sección 11, "Listar usuarios por rol, sin paginar") — pensado justo para este caso ("elegir qué usuario asignar como administrador de una propiedad"):
+
+```bash
+curl -X GET "http://localhost:5296/api/auth/users/by-role?role=Property%20Administrator" \
+  -H "Authorization: Bearer {token}"
+```
+
+```json
+{
+  "data": [
+    {
+      "id": "4a3b2c1d-e5f6-47a8-9b0c-1d2e3f4a5b6c",
+      "email": "propadmin1@losrobles.com",
+      "fullName": "Carlos Pérez",
+      "roles": ["Property Administrator"],
+      "companyId": "3f2f1a2b-4c5d-6e7f-8a9b-0c1d2e3f4a5b"
+    }
+  ],
+  "status": true,
+  "message": "Operation carried out successfully."
+}
+```
+
+- El nombre del rol (`Property Administrator` en el ejemplo) **no está fijo en el backend** — es un rol más, creado vía `POST /api/auth/create-role`. Confirma con el equipo/backoffice cuál es el rol real que se usa para "administrador de estructura física" en este ambiente.
+- Si quien está logueado es `Company Administrator`, no hace falta mandar `companyId` en la query — el backend acota automáticamente a su propia empresa. Si es `Administrator` (plataforma), sí puedes mandar `companyId` para acotar a una empresa puntual.
+- Del array de respuesta, muestra `fullName`/`email` en el selector y guarda el `id` de cada opción — ese `id` (string) es el valor que se manda como `administratorUserId`.
+
+### 2. Mandarlo en `create`/`update`
+
+```json
+{
+  "...": "resto del formulario de la estructura",
+  "administratorUserId": "4a3b2c1d-e5f6-47a8-9b0c-1d2e3f4a5b6c"
+}
+```
+
+### 3. Mostrarlo de vuelta
+
+La respuesta de `create`/`update`/`getById`/`getAll`/`getPaginated` solo trae el `administratorUserId` (el Id crudo) — **no** trae el nombre ni el email del administrador embebido. Si tu UI necesita mostrar "Administrador: Carlos Pérez" en el listado/detalle de la estructura, resuelve el nombre por tu cuenta cruzando ese `id` contra la lista que ya trajiste de `GET /users/by-role` (o pide `GET /users/paginated` si necesitas buscarlo entre todos los usuarios, no solo los de un rol).
+
+---
+
 ## Estructura de objetos (TypeScript)
 
 ```typescript
@@ -317,6 +398,7 @@ interface PhysicalStructureDto {
   towers: TowerDto[];
   imageBytes?: string;         // 🆕 base64 — SOLO entrada (create/update), nunca viene en la respuesta
   pathImg?: string | null;     // 🆕 URL absoluta y completa de la imagen — SOLO lectura, lista para usar en <img src>, el backend la calcula siempre
+  administratorUserId?: string | null; // 🆕 Id (string) de un usuario de AspNetUsers — entrada Y salida, mutable en cualquier update, null si no hay administrador asignado
   // ... el resto de campos de towers/apartments no cambió
 }
 ```
@@ -332,3 +414,7 @@ interface PhysicalStructureDto {
 - [ ] 🆕 En los formularios de crear/editar estructura, agrega un `<input type="file" accept="image/*">` opcional, conviértelo a base64 (ver "Cómo enviar la imagen") y mándalo como `imageBytes` — sin nombre de archivo ni tipo MIME, el backend los detecta solo.
 - [ ] 🆕 En edición, si el usuario no toca el input de imagen, **no mandes `imageBytes`** — así se conserva la imagen actual. Solo mándalo cuando el usuario explícitamente selecciona un archivo nuevo.
 - [ ] 🆕 En listados y detalle, usa `pathImg` directo como `src` de la imagen (ya es una URL absoluta completa, no hace falta concatenar nada) — maneja el caso `pathImg: null` con un placeholder (estructura sin imagen todavía).
+- [ ] 🆕 Agrega un selector de "Administrador" en los formularios de crear/editar estructura, alimentado por `GET /api/auth/users/by-role?role={rol}` (ver "Cómo asignar el administrador"). Manda el `id` elegido como `administratorUserId`; incluye una opción "Sin asignar" que mande `null`.
+- [ ] 🆕 En el formulario de **editar**, precarga el `administratorUserId` actual (viene en la respuesta de `getById`) y reenvíalo tal cual si el usuario no lo cambia — a diferencia de `imageBytes`/`pathImg`, este campo **no se conserva solo**: si lo omites en el `update`, el backend lo interpreta como `null` y borra el administrador asignado.
+- [ ] 🆕 Nunca mandes `administratorUserId: ""` (cadena vacía) para "sin administrador" — usa `null` u omite el campo; `""` provoca un error `400` de dominio.
+- [ ] 🆕 En listados/detalle, si necesitas mostrar el nombre del administrador (no solo su Id), resuélvelo cruzando `administratorUserId` contra los datos ya traídos de `GET /users/by-role` — el backend no lo embebe en la respuesta de `PhysicalStructure`.
