@@ -11,4 +11,7 @@ public interface ICurrentUserService
     bool IsAuthenticated { get; }
     Guid? CompanyId { get; }
     bool IsPlatformAdministrator { get; }
+
+    /// <summary>Rol de administrador de una empresa puntual (no de plataforma) — ver RolePermissionsPolicy.CompanyAdministratorRoleName.</summary>
+    bool IsCompanyAdministrator { get; }
 }

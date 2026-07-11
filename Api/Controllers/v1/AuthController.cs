@@ -133,6 +133,26 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Lista TODOS los usuarios (sin paginar) que tienen el rol indicado — ej. los
+    /// "Property Administrator" de una empresa. Solo <c>Administrator</c> (plataforma,
+    /// puede indicar cualquier <paramref name="companyId"/> o ninguno para ver todas)
+    /// o <c>Company Administrator</c> (siempre acotado a su propia empresa — cualquier
+    /// <paramref name="companyId"/> que mande se ignora).
+    /// </summary>
+    [Authorize(Roles = "Administrator,Company Administrator")]
+    [HttpGet("users/by-role")]
+    public async Task<IActionResult> GetUsersByRole([FromQuery] string role, [FromQuery] Guid? companyId = null)
+    {
+        var result = await _mediator.Send(new GetUsersByRoleQuery(role, companyId));
+        return Ok(new ResponseApi<List<UserDto>>
+        {
+            Data = result,
+            Status = true,
+            Message = "Operation carried out successfully."
+        });
+    }
+
+    /// <summary>
     /// Lista los roles del sistema de forma paginada. Solo administradores.
     /// </summary>
     [Authorize(Roles = "Administrator")]

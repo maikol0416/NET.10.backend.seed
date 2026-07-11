@@ -30,4 +30,7 @@ public class CurrentUserService : ICurrentUserService
 
     public bool IsPlatformAdministrator =>
         User != null && User.IsInRole(RolePermissionsPolicy.AdministratorRoleName);
+
+    public bool IsCompanyAdministrator =>
+        User != null && User.IsInRole(RolePermissionsPolicy.CompanyAdministratorRoleName);
 }

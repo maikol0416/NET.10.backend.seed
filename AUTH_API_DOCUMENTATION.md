@@ -14,9 +14,24 @@ y que el usuario del token tenga el rol **`Administrator`** (`[Authorize(Roles =
 
 > 🆕 `register` es un caso especial: sigue sin el atributo `[Authorize]` a nivel HTTP (por eso no puede devolver `401`/`403` "de framework"), pero **el propio handler exige el header `Authorization` en la práctica** salvo para el registro del primer `Administrator` del sistema. Ver sección 2 para el detalle completo — no lo trates como un endpoint público más.
 
+> 🆕 `GET /users/by-role` (sección 11) es el único endpoint que **también** acepta el rol `Company Administrator`, además de `Administrator` — todos los demás siguen exigiendo `Administrator` exclusivamente.
+
 ---
 
-## 🆕 Última actualización — companyId también en consulta y edición de usuarios
+## 🆕 Última actualización — listar usuarios por rol, sin paginar
+
+Nuevo endpoint pensado para selectores (ej. "elegir qué usuario asignar como administrador de una propiedad o de una empresa"), **no** para reemplazar el listado general:
+
+- **`GET /users/by-role`** — devuelve **todos** los usuarios que tienen el rol indicado, **sin paginar** (un array completo, no un `PaginatedList`). Pensado para listas chicas (ej. cuántos "Property Administrator" tiene una empresa), no para el catálogo general de usuarios.
+- Requiere el rol `Administrator` **o** el nuevo rol `Company Administrator` (administrador de una empresa puntual — se crea igual que cualquier otro rol, vía `POST /create-role`; no tiene módulos automáticos como `Administrator`).
+- **`Company Administrator` siempre queda acotado a los usuarios de su propia empresa** — cualquier `companyId` que mande en la query se ignora, se usa el de su token.
+- **`Administrator`** puede indicar `companyId` para acotar a una empresa puntual, o dejarlo vacío para ver ese rol en **todas** las empresas a la vez.
+- `GET /users/paginated` (sección 4) **no cambió** — sigue siendo solo `Administrator`, sin filtros. Son dos endpoints con objetivos distintos, no lo confundas con este nuevo.
+- Detalle completo con cURL y reglas en la sección 11, al final.
+
+---
+
+## 🆕 Actualización anterior — companyId también en consulta y edición de usuarios
 
 La actualización anterior (justo abajo) ya había agregado `companyId` a `login`/`register`. Esta actualización completa el ciclo: ahora también se puede **ver** y **editar** la empresa de un usuario existente.
 
@@ -29,7 +44,7 @@ La actualización anterior (justo abajo) ya había agregado `companyId` a `login
 
 ---
 
-## 🆕 Actualización anterior — multi-tenant: usuarios atados a una empresa
+## 🆕 Dos actualizaciones atrás — multi-tenant: usuarios atados a una empresa
 
 Cada usuario (salvo `Administrator`, que es un rol de plataforma) ahora pertenece a **una única empresa** (`companyId`). Esto afecta `login` y `register`:
 
@@ -40,7 +55,7 @@ Cada usuario (salvo `Administrator`, que es un rol de plataforma) ahora pertenec
 
 ---
 
-## 🆕 Dos actualizaciones atrás — el rol Administrator tiene acceso total automático
+## 🆕 Tres actualizaciones atrás — el rol Administrator tiene acceso total automático
 
 Esto es lo que cambió en la actualización previa a la de multi-tenant:
 
@@ -60,7 +75,8 @@ El front ya tiene implementado `login`, `register` y `create-role` tal como esta
 | `POST /login` | 🟡 MODIFICADO | El response (`AuthResponseDto`) gana `rolePermissions` y 🆕 `companyId`. Nada se quitó ni renombró — es aditivo, no rompe nada existente. |
 | `POST /register` | 🟡 MODIFICADO | Gana `rolePermissions` y 🆕 `companyId` en el response, y 🆕 `companyId` opcional en el request. 🆕 Además, las reglas de quién puede registrar a quién cambiaron por completo — ver sección 2. |
 | `POST /create-role` | 🟡 MODIFICADO | El request (`CreateRoleDto`) gana el campo opcional `permissions: string[]`. Si no lo envías, el rol se crea sin permisos (igual que antes). |
-| `GET /users/paginated` | 🟢 NUEVO | Lista usuarios paginados, incluye `rolePermissions` y 🆕 `companyId` por usuario. |
+| `GET /users/paginated` | 🟢 NUEVO | Lista usuarios paginados, incluye `rolePermissions` y `companyId` por usuario. |
+| `GET /users/by-role` | 🆕 NUEVO | Lista **todos** los usuarios (sin paginar) que tienen un rol puntual. Solo `Administrator` o `Company Administrator`. Ver sección 11. |
 | `GET /roles/paginated` | 🟢 NUEVO | Lista roles paginados, incluye `permissions` por rol. |
 | `PUT /users/update` | 🟢 NUEVO | Actualiza email, nombre, roles y 🆕 `companyId` de un usuario. |
 | `DELETE /users/delete` | 🟢 NUEVO | Elimina un usuario. |
@@ -470,6 +486,105 @@ curl -X PUT http://localhost:5296/api/auth/roles/permissions \
 
 ---
 
+## 11. LISTAR USUARIOS POR ROL, SIN PAGINAR (GET) — 🆕 NUEVO
+**Endpoint:** `GET /api/auth/users/by-role?role={role}&companyId={id}`
+**Auth:** `Bearer {token}` + rol `Administrator` **o** `Company Administrator`
+
+### Para qué sirve
+No es un reemplazo de `GET /users/paginated` (sección 4) — son endpoints con objetivos distintos:
+
+| | `GET /users/paginated` | `GET /users/by-role` |
+|---|---|---|
+| Devuelve | Una página (`items` + metadata) | **Todos** los resultados en un array plano |
+| Filtros | Ninguno | `role` (obligatorio) + `companyId` (opcional) |
+| Quién puede llamarlo | Solo `Administrator` | `Administrator` **o** `Company Administrator` |
+| Para qué se usa | Catálogo general de usuarios (pantalla de administración) | Selectores chicos — ej. "elegir a qué Property Administrator asignarle esta propiedad/empresa" |
+
+### Query params
+
+| Param | Tipo | Requerido | Detalle |
+|---|---|---|---|
+| `role` | `string` | ✅ Sí | Nombre exacto del rol a buscar (case-sensitive tal como quedó guardado, ej. `Property Administrator`). Si lo omites o mandas vacío → `400`. |
+| `companyId` | `string` (UUID) | Solo lo usa `Administrator` | Si quien llama es `Company Administrator`, **se ignora** — siempre se usa la empresa de su propio token. Si quien llama es `Administrator` y lo omite, la búsqueda **no se acota a ninguna empresa** (trae el rol de todas). |
+
+### cURL — caso 1: `Company Administrator` consultando su propia empresa (el uso típico)
+```bash
+curl -X GET "http://localhost:5296/api/auth/users/by-role?role=Property%20Administrator" \
+  -H "Authorization: Bearer {tokenDelCompanyAdministrator}"
+```
+No hace falta mandar `companyId` — aunque lo mandes, el backend usa el de este token.
+
+### cURL — caso 2: `Administrator` consultando una empresa puntual
+```bash
+curl -X GET "http://localhost:5296/api/auth/users/by-role?role=Property%20Administrator&companyId=3f2f1a2b-4c5d-6e7f-8a9b-0c1d2e3f4a5b" \
+  -H "Authorization: Bearer {tokenDeAdministrator}"
+```
+
+### cURL — caso 3: `Administrator` consultando el rol en TODAS las empresas
+```bash
+curl -X GET "http://localhost:5296/api/auth/users/by-role?role=Property%20Administrator" \
+  -H "Authorization: Bearer {tokenDeAdministrator}"
+```
+Mismo request que el caso 1, pero como quien llama es `Administrator` (no tiene empresa propia) y no mandó `companyId`, la respuesta trae el rol **de todas las empresas mezcladas** — útil para una vista de soporte, pero probablemente no lo que quieres en un selector de asignación (ahí sí manda `companyId`, caso 2).
+
+### Response (200 OK) — array plano de `UserDto`, NO paginado
+```json
+{
+  "data": [
+    {
+      "id": "4a3b2c1d-....",
+      "email": "propadmin1@losrobles.com",
+      "fullName": "Carlos Pérez",
+      "roles": ["Property Administrator"],
+      "rolePermissions": [
+        {
+          "roleId": "d5e6f7a8-....",
+          "roleName": "Property Administrator",
+          "permissions": ["PhysicalStructure"]
+        }
+      ],
+      "companyId": "3f2f1a2b-4c5d-6e7f-8a9b-0c1d2e3f4a5b"
+    },
+    {
+      "id": "5b4c3d2e-....",
+      "email": "propadmin2@losrobles.com",
+      "fullName": "Ana Gómez",
+      "roles": ["Property Administrator"],
+      "rolePermissions": [
+        {
+          "roleId": "d5e6f7a8-....",
+          "roleName": "Property Administrator",
+          "permissions": ["PhysicalStructure"]
+        }
+      ],
+      "companyId": "3f2f1a2b-4c5d-6e7f-8a9b-0c1d2e3f4a5b"
+    }
+  ],
+  "status": true,
+  "message": "Operation carried out successfully."
+}
+```
+> ⚠️ `data` es directamente un **array** (`UserDto[]`) — a diferencia de `getPaginated`/`getAll` de otros módulos, acá no hay `items`/`totalCount`/`pageNumber`. Si tu cliente HTTP tipa la respuesta, tipéala como `UserDto[]`, no como `PaginatedList<UserDto>`.
+
+Si no hay ningún usuario con ese rol (en esa empresa, si aplica), `data` viene como array vacío `[]` — no es un error.
+
+### Errores esperables
+
+| Mensaje / causa | HTTP | Qué debe hacer el front |
+|---|---|---|
+| "Debes indicar el rol a consultar." | 400 | `role` vino vacío o no se mandó — validar en el front antes de llamar. |
+| "Tu usuario no pertenece a ninguna empresa; no puedes consultar usuarios." | 400 | Caso anómalo: un `Company Administrator` sin empresa asignada — estado de datos inconsistente, no es un error de UI. |
+| 401 | 401 | Falta `Authorization` o el token expiró. |
+| 403 | 403 | El usuario del token no tiene rol `Administrator` ni `Company Administrator`. |
+
+### Qué necesita el front para implementarlo
+1. **Nuevo rol a conocer: `Company Administrator`.** Es un string más (se crea desde la pantalla de roles, igual que cualquier otro, vía `POST /create-role`) — no requiere cambios de catálogo, solo que exista como rol creado en el sistema y que se le asigne a los usuarios correspondientes vía `PUT /users/update`.
+2. Si vas a construir el selector "asignar Property Administrator a una propiedad/empresa": llama este endpoint con `role=Property Administrator` (y `companyId` si quien está logueado es `Administrator` y ya sabes para qué empresa es la asignación), y arma el selector con `fullName`/`email` de cada item — el `id` es lo que mandas al endpoint de asignación (ese endpoint de asignación en sí es otra funcionalidad, no forma parte de este cambio).
+3. No reutilices tu lógica existente de `users/paginated` para esto — es un array plano, no `PaginatedList`, así que no busques `items`/`totalCount` en la respuesta.
+4. Si el usuario logueado es `Company Administrator`, no le muestres ningún input de `companyId` en este flujo — siempre se usa el de su sesión, mandarlo no tiene efecto.
+
+---
+
 ## ESTRUCTURA DE OBJETOS DTO (TypeScript)
 
 ```typescript
@@ -546,6 +661,9 @@ interface PaginatedList<T> {
   pageSize: number;
   // NO incluye totalPages — calcúlalo: Math.ceil(totalCount / pageSize)
 }
+
+// 🆕 GET /users/by-role responde UserDto[] directo — NO es PaginatedList<UserDto>
+type UsersByRoleResponse = UserDto[];
 ```
 
 ---
@@ -605,6 +723,9 @@ Cualquier otro valor es rechazado por el validador con `400` (`InvalidModuleName
 | 🆕 El `companyId` enviado debe corresponder a una empresa existente (`ManagementCompany`) | `POST /register`, `PUT /users/update` |
 | 🆕 Solo un `Administrator` puede indicar `companyId` explícito al registrar (y solo porque él mismo no pertenece a ninguna empresa) | `POST /register` |
 | 🆕 Solo un `Administrator` puede registrar a otro usuario con rol `Administrator` (salvo el primero del sistema, bootstrap) | `POST /register` |
+| 🆕 `GET /users/by-role` requiere `role` — sin él, `400` | `GET /users/by-role` |
+| 🆕 Un `Company Administrator` siempre queda acotado a los usuarios de su propia empresa; cualquier `companyId` que mande se ignora | `GET /users/by-role` |
+| 🆕 Un `Administrator` sin `companyId` en `GET /users/by-role` ve el rol consultado en todas las empresas a la vez | `GET /users/by-role` |
 
 ---
 
@@ -619,7 +740,7 @@ Cualquier otro valor es rechazado por el validador con `400` (`InvalidModuleName
 | FullNameEmpty / FullNameTooLong | 400 | `fullName` inválido |
 | (mensaje libre de dominio) | 400 | Reglas de negocio de la tabla de arriba (último admin, rol en uso, email duplicado, intento de asignar permisos a `Administrator`, etc.) — vienen en el texto de la excepción, no tienen ErrorCode fijo |
 | 401 | 401 | Falta el header `Authorization` o el token expiró/es inválido |
-| 403 | 403 | El usuario del token no tiene el rol `Administrator` |
+| 403 | 403 | El usuario del token no tiene el rol requerido — `Administrator` en la mayoría de endpoints; `Administrator` **o** `Company Administrator` únicamente en `GET /users/by-role` (sección 11) |
 
 ---
 

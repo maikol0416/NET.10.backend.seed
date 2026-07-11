@@ -14,6 +14,7 @@ public interface IAuthService
     Task<bool> AnyAdministratorExistsAsync();
     Task<AuthResult> CreateRoleAsync(string roleName, IEnumerable<ModuleEnum>? initialPermissions = null);
     Task<PaginatedList<UserSummary>> GetUsersPaginatedAsync(int pageNumber, int pageSize);
+    Task<IEnumerable<UserSummary>> GetUsersByRoleAsync(string role, Guid? companyId);
     Task<PaginatedList<RoleSummary>> GetRolesPaginatedAsync(int pageNumber, int pageSize);
     Task<AuthResult> UpdateUserAsync(string userId, string email, string fullName, IEnumerable<string> roles, Guid? companyId);
     Task<AuthResult> DeleteUserAsync(string userId, string requestingUserId);

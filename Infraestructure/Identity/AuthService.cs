@@ -224,6 +224,31 @@ public class AuthService : IAuthService
         return new PaginatedList<UserSummary>(summaries, totalCount, pageNumber, pageSize);
     }
 
+    /// <summary>
+    /// Lista TODOS los usuarios (sin paginar) que tienen el rol indicado, opcionalmente
+    /// acotado a una empresa. Pensado para listados chicos (ej. "los Property Administrator
+    /// de mi empresa"), no para el listado general de usuarios (ver GetUsersPaginatedAsync).
+    /// </summary>
+    public async Task<IEnumerable<UserSummary>> GetUsersByRoleAsync(string role, Guid? companyId)
+    {
+        var usersInRole = (await _userManager.GetUsersInRoleAsync(role)).AsEnumerable();
+
+        if (companyId.HasValue)
+        {
+            usersInRole = usersInRole.Where(u => u.CompanyId == companyId.Value);
+        }
+
+        var summaries = new List<UserSummary>();
+        foreach (var user in usersInRole.OrderBy(u => u.Email))
+        {
+            var roles = await _userManager.GetRolesAsync(user);
+            var rolePermissions = await BuildRolePermissionsSummaryAsync(user);
+            summaries.Add(new UserSummary(user.Id, user.Email!, user.FullName, roles, rolePermissions, user.CompanyId));
+        }
+
+        return summaries;
+    }
+
     public async Task<PaginatedList<RoleSummary>> GetRolesPaginatedAsync(int pageNumber, int pageSize)
     {
         var totalCount = await _roleManager.Roles.CountAsync();

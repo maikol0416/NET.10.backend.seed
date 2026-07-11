@@ -9,6 +9,14 @@ public static class RolePermissionsPolicy
 {
     public const string AdministratorRoleName = "Administrator";
 
+    /// <summary>
+    /// Rol de administrador de una empresa (no de plataforma). A diferencia de
+    /// Administrator, sí pertenece a una empresa y sus consultas quedan siempre
+    /// acotadas a ella — no recibe módulos automáticos, es solo un rol más creado
+    /// vía POST /auth/create-role.
+    /// </summary>
+    public const string CompanyAdministratorRoleName = "Company Administrator";
+
     public static bool IsAdministrator(string roleName) =>
         string.Equals(roleName, AdministratorRoleName, StringComparison.OrdinalIgnoreCase);
 
