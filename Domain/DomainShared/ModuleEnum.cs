@@ -11,5 +11,6 @@ public enum ModuleEnum
     Document,
     Guest,
     Users,
-    Roles
+    Roles,
+    ManagementCompany
 }

@@ -679,9 +679,14 @@ Document
 Guest
 Users
 Roles
+ManagementCompany
 ```
 
+> 🆕 `ManagementCompany` (gestión de empresas administradoras/tenants) es un módulo nuevo — antes no existía forma de otorgar o restringir este módulo a un rol, aunque el endpoint `POST/PUT/DELETE/GET /api/managementcompany/*` ya existía. Si tenías roles personalizados que necesitan gestionar empresas, agrégales este permiso vía `PUT /roles/permissions`.
+
 Cualquier otro valor es rechazado por el validador con `400` (`InvalidModuleName`). Si necesitas agregar un módulo nuevo, requiere un cambio de backend (`Domain/DomainShared/ModuleEnum.cs`) — no es un catálogo editable desde el front.
+
+> ⚠️ Importante para el front: agregar un módulo al catálogo **no restringe automáticamente ningún endpoint** — hoy `ModuleEnum`/`rolePermissions` es puramente informativo para que el front decida qué mostrar en menús/UI según el rol logueado (salvo `Users`/`Roles`, que sí están protegidos a nivel de endpoint con `[Authorize(Roles = "Administrator")]` en `AuthController`). Los controladores CRUD (`PhysicalStructure`, `Owner`, `Document`, `Guest`, `ManagementCompany`) solo exigen `[Authorize]` (cualquier usuario autenticado) — no hay una verificación de permisos por módulo en el backend todavía. Si necesitas que el backend además bloquee el acceso real a `ManagementCompany` para roles sin ese permiso, es un cambio adicional (no incluido en este ajuste) — avísanos si lo necesitas.
 
 ---
 

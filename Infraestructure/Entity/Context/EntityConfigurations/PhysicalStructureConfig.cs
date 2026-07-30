@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Domain.BoundedContext.Properties;
+using Domain.BoundedContext.People;
+using Domain.BoundedContext.Tenancy;
 
 namespace Infraestructure.Entity;
 public class PhysicalStructureConfig :IEntityTypeConfiguration<PhysicalStructureAgg>
@@ -23,7 +25,17 @@ public class PhysicalStructureConfig :IEntityTypeConfiguration<PhysicalStructure
         builder.Property(p => p.CompanyId)
             .IsRequired();
 
-        builder.HasIndex(p => p.CompanyId);
+        // FK real hacia ManagementCompanies.Id — ambos agregados viven en el mismo
+        // EntityDbContext (a diferencia de AdministratorUserId/AspNetUsers, que está en
+        // IdentityAppDbContext), así que Fluent API puede modelar la relación completa.
+        // Restrict: no se puede eliminar una empresa mientras tenga estructuras físicas
+        // asociadas — CompanyId es obligatorio e inmutable, no aplica poner null.
+        // Sin navegación (HasOne<T>() sin propiedad) porque el dominio expone solo el Id,
+        // nunca una referencia directa a ManagementCompanyAgg entre agregados distintos.
+        builder.HasOne<ManagementCompanyAgg>()
+            .WithMany()
+            .HasForeignKey(p => p.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(p => p.Name)
             .IsRequired()
@@ -170,6 +182,15 @@ public class PhysicalStructureConfig :IEntityTypeConfiguration<PhysicalStructure
                 apartmentBuilder.Property(a => a.IdOwner)
                     .HasColumnName("IdOwner")
                     .IsRequired(false);
+
+                // FK real hacia Owner.Id (BC People, mismo EntityDbContext). Nullable:
+                // un apartamento puede no tener propietario asignado todavía (aún no
+                // vendido/entregado). SetNull: si se elimina el Owner, el apartamento
+                // queda sin propietario en vez de bloquear el borrado o arrastrarlo.
+                apartmentBuilder.HasOne<OwnerAgg>()
+                    .WithMany()
+                    .HasForeignKey(a => a.IdOwner)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
         });
 
