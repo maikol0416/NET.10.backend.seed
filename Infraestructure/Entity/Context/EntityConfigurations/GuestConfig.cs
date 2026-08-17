@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Domain.BoundedContext.People;
+using Domain.BoundedContext.Properties;
 
 namespace Infraestructure.Entity;
 
@@ -83,6 +84,25 @@ public class GuestConfig : IEntityTypeConfiguration<GuestAgg>
             guestPermissionBuilder.Property(t => t.EndDate)
                 .HasColumnName("EndDate")
                 .IsRequired();
+
+            guestPermissionBuilder.Property(t => t.PhysicalStructureId)
+                .HasColumnName("PhysicalStructureId")
+                .IsRequired();
+
+            // FK real hacia PhysicalStructure.Id (BC Properties, mismo EntityDbContext). Restrict:
+            // no se permite borrar una propiedad horizontal mientras tenga permisos de huéspedes
+            // vigentes; evita además múltiples cascade paths con el borrado propio del Guest.
+            guestPermissionBuilder.HasOne<PhysicalStructureAgg>()
+                .WithMany()
+                .HasForeignKey(t => t.PhysicalStructureId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ApartmentId es opcional (permiso acotado a un apartamento puntual dentro de la
+            // propiedad) y es una referencia lógica: Apartment es una entidad owned anidada
+            // (Tower.Apartments), no un aggregate root, por lo que no se modela como FK de EF.
+            guestPermissionBuilder.Property(t => t.ApartmentId)
+                .HasColumnName("ApartmentId")
+                .IsRequired(false);
         });
     }
 }

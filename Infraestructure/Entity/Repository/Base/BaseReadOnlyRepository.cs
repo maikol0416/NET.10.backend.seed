@@ -48,4 +48,13 @@ public class BaseReadOnlyRepository<T> : IBaseReadOnlyRepository<T>
         var items = await Entity.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
         return new Domain.DomainShared.PaginatedList<T>(items, totalCount, pageNumber, pageSize);
     }
+
+    /// <inheritdoc/>
+    public virtual async Task<Domain.DomainShared.PaginatedList<T>> GetPaginatedAsync(int pageNumber, int pageSize, Expression<Func<T, bool>> predicate)
+    {
+        var query = Entity.Where(predicate);
+        var totalCount = await query.CountAsync();
+        var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
+        return new Domain.DomainShared.PaginatedList<T>(items, totalCount, pageNumber, pageSize);
+    }
 }

@@ -61,7 +61,8 @@ public class GuestAgg : AggregateRoot
         {
             foreach (var incomingGuestPermission in incomingGuestPermissions)
             {
-                GuestPermissions.Add(new GuestPermissionEntity(incomingGuestPermission.StartDate, incomingGuestPermission.EndDate));
+                GuestPermissions.Add(new GuestPermissionEntity(incomingGuestPermission.StartDate, incomingGuestPermission.EndDate,
+                    incomingGuestPermission.PhysicalStructureId, incomingGuestPermission.ApartmentId));
             }
         }
     }

@@ -116,6 +116,12 @@ public class GuestValidator : AbstractValidator<GuestDto>
                     .WithErrorCode("GuestPermissionDateRangeInvalid")
                     .WithMessage("La fecha de inicio debe ser menor a la fecha de fin.")
                     .WithName(nameof(GuestPermissionDto.EndDate));
+
+                permission.RuleFor(p => p.PhysicalStructureId)
+                    .NotEmpty()
+                    .WithErrorCode("GuestPermissionPhysicalStructureIdEmpty")
+                    .WithMessage("La propiedad horizontal del permiso no puede ser vacía.")
+                    .WithName(nameof(GuestPermissionDto.PhysicalStructureId));
             });
     }
 }

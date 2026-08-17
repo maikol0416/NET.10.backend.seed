@@ -21,8 +21,8 @@ public static class GuestMapper
                 src.MediaId,
                 src.GuestPermissions != null
                     ? src.GuestPermissions.Select(gp => gp.Id.HasValue && gp.Id.Value != Guid.Empty
-                        ? new GuestPermissionEntity(gp.Id.Value, gp.StartDate, gp.EndDate)
-                        : new GuestPermissionEntity(gp.StartDate, gp.EndDate)).ToList()
+                        ? new GuestPermissionEntity(gp.Id.Value, gp.StartDate, gp.EndDate, gp.PhysicalStructureId, gp.ApartmentId)
+                        : new GuestPermissionEntity(gp.StartDate, gp.EndDate, gp.PhysicalStructureId, gp.ApartmentId)).ToList()
                     : new List<GuestPermissionEntity>()
             ))
             .ForMember(dest => dest.Name, opt => opt.Ignore())
@@ -48,7 +48,7 @@ public static class GuestMapper
             .ForMember(dest => dest.ResponseTermsAndCondition, opt => opt.MapFrom(src => src.ResponseTermsAndCondition))
             .ForMember(dest => dest.MediaId, opt => opt.MapFrom(src => src.MediaId))
             .ForMember(dest => dest.GuestPermissions, opt => opt.MapFrom(src => src.GuestPermissions
-                .Select(gp => new GuestPermissionDto { Id = gp.Id, StartDate = gp.StartDate, EndDate = gp.EndDate })
+                .Select(gp => new GuestPermissionDto { Id = gp.Id, StartDate = gp.StartDate, EndDate = gp.EndDate, PhysicalStructureId = gp.PhysicalStructureId, ApartmentId = gp.ApartmentId })
                 .ToList()));
     }
 }

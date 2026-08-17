@@ -28,4 +28,12 @@ public interface IBaseReadOnlyRepository<T>
 
     /// <summary>Retorna un listado paginado de entidades.</summary>
     Task<Domain.DomainShared.PaginatedList<T>> GetPaginatedAsync(int pageNumber, int pageSize);
+
+    /// <summary>
+    /// Retorna un listado paginado de entidades que satisfacen el predicado indicado.
+    /// Mismo mecanismo que <see cref="GetPaginatedAsync(int, int)"/>, con filtro aplicado
+    /// antes de contar y paginar — transversal a cualquier módulo que necesite paginación
+    /// con criterio de filtro.
+    /// </summary>
+    Task<Domain.DomainShared.PaginatedList<T>> GetPaginatedAsync(int pageNumber, int pageSize, Expression<Func<T, bool>> predicate);
 }

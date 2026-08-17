@@ -98,5 +98,6 @@ public static class DependencyInyection
             services.AddScoped(typeof(IRequestHandler<GetByIdQuery<ENT, DTO>, DTO?>),  typeof(GetByIdHandler<ENT, DTO>));
             services.AddScoped(typeof(IRequestHandler<GetAllQuery<ENT, DTO>, IEnumerable<DTO>>), typeof(GetAllHandler<ENT, DTO>));
             services.AddScoped(typeof(IRequestHandler<GetPaginatedQuery<ENT, DTO>, Domain.DomainShared.PaginatedList<DTO>>), typeof(GetPaginatedHandler<ENT, DTO>));
+            services.AddScoped(typeof(IRequestHandler<GetPaginatedFilteredQuery<ENT, DTO>, Domain.DomainShared.PaginatedList<DTO>>), typeof(GetPaginatedFilteredHandler<ENT, DTO>));
         }
 }

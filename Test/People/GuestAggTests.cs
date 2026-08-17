@@ -206,8 +206,8 @@ public class GuestAggTests
         var agg = CreateValid();
         var incoming = new List<GuestPermissionEntity>
         {
-            new(DateTime.UtcNow, DateTime.UtcNow.AddDays(1)),
-            new(DateTime.UtcNow.AddDays(2), DateTime.UtcNow.AddDays(3))
+            new(DateTime.UtcNow, DateTime.UtcNow.AddDays(1), Guid.NewGuid()),
+            new(DateTime.UtcNow.AddDays(2), DateTime.UtcNow.AddDays(3), Guid.NewGuid())
         };
 
         agg.UpdateGuestPermissions(incoming);
@@ -220,7 +220,7 @@ public class GuestAggTests
     {
         var agg = CreateValid(guestPermissions: new List<GuestPermissionEntity>
         {
-            new(DateTime.UtcNow, DateTime.UtcNow.AddDays(1))
+            new(DateTime.UtcNow, DateTime.UtcNow.AddDays(1), Guid.NewGuid())
         });
 
         agg.UpdateGuestPermissions(null!);
